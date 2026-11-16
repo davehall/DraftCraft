@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DraftCraft - Smart Tutor</title>
+  
+  <!-- Tailwind CSS for styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Custom Styles for Scrollbars -->
+  <style>
+    .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f5f5f4; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 4px; border: 2px solid #f5f5f4; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #a8a29e; }
+  </style>
+
+  <script type="module">
+    // ==========================================
+    // 🔑 YOUR API KEY GOES HERE
+    // ==========================================
+    const API_KEY = "AQ.Ab8RN6I9G-NC-l3QkPfj7qVo7tLtHijs-wM0Qc7ji6jivZGd0A"; 
+
+    // Application State
+    let state = {
+      activeSubject: 'english', // 'english', 'history', 'science', 'geography'
+      isProgressOpen: false,
+      activeCategory: 'poetry',
+      showRef: false,
+      question: '',
+      referenceText: '',
+      point: '',
+      evidence: '',
+      explain: '',
+      feedback: '',
+      isLoading: false,
+      error: '',
+      progressHistory: [],
+      // Unique storage key based on browser session / user ID to keep users completely separate
+      storageKey: 'junior_cycle_tutor_progress_' + (localStorage.getItem('user_uuid') || (() => {
+        const id = 'user_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('user_uuid', id);
+        return id;
+      })())
+    };
+
+    // Subject Configurations
+    const subjectConfig = {
+      english: {
+        title: "Junior Cycle English",
+        subtitle: "Smart Revision Tutor",
+        icon: "book-open",
+        theme: {
+          bg: "bg-purple-600", text: "text-purple-700", border: "border-purple-200", bgLight: "bg-purple-50",
+          shadow: "shadow-purple-200", hover: "hover:bg-purple-700", iconInner: "text-purple-600", badge: "bg-purple-50 text-purple-700 border-purple-200"
+        },
+        categories: [
+          { id: 'poetry', label: 'Poetry' },
+          { id: 'drama', label: 'Drama' },
+          { id: 'novel', label: 'Novel' },
+          { id: 'custom', label: 'Custom' }
+        ],
+        draftTitle: "2. Draft Your Answer (P.I.E.)",
+        labels: { p: "Point", i: "Illustration", e: "Explain" },
+        colors: { p: "text-emerald-700", i: "text-purple-700", e: "text-pink-700" },
+        borderColors: { p: "border-emerald-200", i: "border-purple-200", e: "border-pink-200" },
+        focusColors: { p: "focus:ring-emerald-500 focus:border-emerald-500", i: "focus:ring-purple-500 focus:border-purple-500", e: "focus:ring-pink-500 focus:border-pink-500" },
+        placeholders: {
+          p: "State your main idea clearly. What is the one specific thing you are going to talk about?",
+          i: "Give a quote or specific detail from the text that illustrates your point.",
+          e: "This is where you get the marks! Explain HOW the quote proves your point. Talk about the writer's language and the effect on the reader."
+        },
+        systemRole: "Junior Cycle English tutor in Ireland",
+        focusInstruction: "Use **bold text** to highlight key literary terms (e.g., imagery, tone, metaphor) or important advice. Focus on the writer's craft and effect on the reader.",
+        example: {
+          ref: `Mid-Term Break by Seamus Heaney\n\nI sat all morning in the college sick bay\nCounting bells knelling classes to a close.\nAt two o'clock our neighbours drove me home.\n\n... (extract) ...\n\nHe lay in the four-foot box as in his cot.\nNo gaudy scars, the bumper knocked him clear.\n\nA four-foot box, a foot for every year.`,
+          q: `How does the poet Seamus Heaney convey a sense of tragedy and sadness in "Mid-Term Break"? Support your answer with reference to the poem.`,
+          cat: 'poetry',
+          p: `Seamus Heaney conveys a heartbreaking sense of tragedy by showing how young and innocent his little brother was when he died.`,
+          i: `At the very end of the poem, he writes: "A four-foot box, a foot for every year."`,
+          e: `This quote is incredibly sad because it reveals the child was only four years old. The short, blunt description of the coffin shocks the reader. It makes us feel deep sympathy for the family because a young life was cut short so soon.`
+        }
+      },
+      history: {
+        title: "History",
+        subtitle: "S.F.S. Paragraph Tutor",
+        icon: "landmark",
+        theme: {
+          bg: "bg-amber-600", text: "text-amber-700", border: "border-amber-200", bgLight: "bg-amber-50",
+          shadow: "shadow-amber-200", hover: "hover:bg-amber-700", iconInner: "text-amber-600", badge: "bg-amber-50 text-amber-700 border-amber-200",
+          infoAlert: "bg-amber-50 border-amber-200 text-amber-900"
+        },
+        categories: [
+          { id: 'people', label: 'People' },
+          { id: 'events', label: 'Events' },
+          { id: 'sources', label: 'Sources' },
+          { id: 'custom', label: 'Custom' }
+        ],
+        draftTitle: "2. Draft Your Answer (S.F.S.)",
+        labels: { p: "Statement", i: "Historical Facts", e: "Significance" },
+        colors: { p: "text-emerald-700", i: "text-amber-700", e: "text-purple-700" },
+        borderColors: { p: "border-emerald-200", i: "border-amber-200", e: "border-purple-200" },
+        focusColors: { p: "focus:ring-emerald-500 focus:border-emerald-500", i: "focus:ring-amber-500 focus:border-amber-500", e: "focus:ring-purple-500 focus:border-purple-500" },
+        placeholders: {
+          p: "Make a clear historical statement directly answering the question...",
+          i: "Provide 2-3 specific historical facts, dates, names, or events to back up your statement...",
+          e: "Explain the historical significance. Why did this matter? What were the consequences?"
+        },
+        systemRole: "Junior Cycle History tutor in Ireland",
+        focusInstruction: "Use **bold text** to highlight key historical terms, dates, or significant concepts. Focus heavily on historical accuracy, cause-and-effect, and use of concrete facts over vague statements.",
+        example: {
+          ref: ``,
+          q: `Explain the impact of the printing press during the Renaissance.`,
+          cat: 'events',
+          p: `The invention of the printing press by Johannes Gutenberg in 1440 was a turning point in the Renaissance, as it allowed ideas to spread rapidly across Europe.`,
+          i: `Before the printing press, books were copied by hand by monks, making them rare and expensive. Gutenberg's press used movable type, which meant books could be produced cheaply and in large numbers.`,
+          e: `This was highly significant because it broke the Catholic Church's monopoly on knowledge. More people learned to read, and new Renaissance ideas about science, art, and religion spread quickly, leading to major movements like the Reformation.`
+        }
+      },
+      science: {
+        title: "Science",
+        subtitle: "C.E.R. Framework Tutor",
+        icon: "microscope",
+        theme: {
+          bg: "bg-blue-600", text: "text-blue-700", border: "border-blue-200", bgLight: "bg-blue-50",
+          shadow: "shadow-blue-200", hover: "hover:bg-blue-700", iconInner: "text-blue-600", badge: "bg-blue-50 text-blue-700 border-blue-200",
+          infoAlert: "bg-blue-50 border-blue-200 text-blue-900"
+        },
+        categories: [
+          { id: 'biology', label: 'Biology' },
+          { id: 'chemistry', label: 'Chemistry' },
+          { id: 'physics', label: 'Physics' },
+          { id: 'custom', label: 'Custom' }
+        ],
+        draftTitle: "2. Draft Your Answer (C.E.R.)",
+        labels: { p: "Claim", i: "Evidence", e: "Reasoning" },
+        colors: { p: "text-emerald-700", i: "text-blue-700", e: "text-purple-700" },
+        borderColors: { p: "border-emerald-200", i: "border-blue-200", e: "border-purple-200" },
+        focusColors: { p: "focus:ring-emerald-500 focus:border-emerald-500", i: "focus:ring-blue-500 focus:border-blue-500", e: "focus:ring-purple-500 focus:border-purple-500" },
+        placeholders: {
+          p: "Make a clear scientific claim that answers the question...",
+          i: "Provide specific data, observations, or facts to support your claim...",
+          e: "Explain the scientific principles that connect your evidence to your claim."
+        },
+        systemRole: "Junior Cycle Science tutor in Ireland",
+        focusInstruction: "Use **bold text** to highlight key scientific terms, theories, or data. Focus heavily on scientific accuracy and logical reasoning.",
+        example: {
+          ref: ``,
+          q: `Explain how the particles in a solid behave compared to a gas.`,
+          cat: 'chemistry',
+          p: `Particles in a solid are tightly packed in a fixed pattern and can only vibrate, whereas gas particles are spread far apart and move freely.`,
+          i: `When observing ice (a solid), it holds its own shape and cannot be easily compressed. When water boils into steam (a gas), it expands to fill the entire container.`,
+          e: `This happens because the attractive forces between particles in a solid are very strong, holding them in place. In a gas, the particles have so much heat energy that they overcome these forces and move rapidly in all directions.`
+        }
+      },
+      geography: {
+        title: "Geography",
+        subtitle: "S.E.E. Paragraph Tutor",
+        icon: "globe-2",
+        theme: {
+          bg: "bg-emerald-600", text: "text-emerald-700", border: "border-emerald-200", bgLight: "bg-emerald-50",
+          shadow: "shadow-emerald-200", hover: "hover:bg-emerald-700", iconInner: "text-emerald-600", badge: "bg-emerald-50 text-emerald-700 border-emerald-200",
+          infoAlert: "bg-emerald-50 border-emerald-200 text-emerald-900"
+        },
+        categories: [
+          { id: 'physical', label: 'Physical' },
+          { id: 'human', label: 'Human' },
+          { id: 'economic', label: 'Economic' },
+          { id: 'custom', label: 'Custom' }
+        ],
+        draftTitle: "2. Draft Your Answer (S.E.E.)",
+        labels: { p: "Statement", i: "Explanation", e: "Example" },
+        colors: { p: "text-blue-700", i: "text-emerald-700", e: "text-purple-700" },
+        borderColors: { p: "border-blue-200", i: "border-emerald-200", e: "border-purple-200" },
+        focusColors: { p: "focus:ring-blue-500 focus:border-blue-500", i: "focus:ring-emerald-500 focus:border-emerald-500", e: "focus:ring-purple-500 focus:border-purple-500" },
+        placeholders: {
+          p: "Make a clear geographical statement (1 SRP)...",
+          i: "Explain your statement in more detail, showing you understand how or why it happens...",
+          e: "Provide a specific real-world example, named location, or statistic to back it up."
+        },
+        systemRole: "Junior Cycle Geography tutor in Ireland",
+        focusInstruction: "Use **bold text** to highlight key geographical terms and locations. Focus heavily on ensuring the student is building clear Significant Relevant Points (SRPs).",
+        example: {
+          ref: ``,
+          q: `Explain how a waterfall is formed by river erosion.`,
+          cat: 'physical',
+          p: `A waterfall forms in the upper course of a river where a layer of hard rock lies on top of a layer of soft rock.`,
+          i: `The river water falls over the hard rock and erodes the softer rock underneath much faster through processes like hydraulic action and abrasion. This creates an overhang of hard rock, which eventually collapses, causing the waterfall to retreat upstream over time and form a steep gorge.`,
+          e: `A clear example of this is the Powerscourt Waterfall on the River Dargle in County Wicklow.`
+        }
+      }
+    };
+
+    // Question Banks
+    const questionBanks = {
+      english: {
+        poetry: [
+          "Choose a poem you have studied that you found interesting. Explain what made it interesting for you. Support your answer with reference to the poem.",
+          "Identify a poem you have studied in which the poet uses language effectively to create a powerful atmosphere. Discuss your answer with reference to the text.",
+          "Select a poem you have studied that deals with an important issue or theme. How does the poet explore this issue? Support your points with quotation.",
+          "Choose a poem you have studied which features a memorable person or character. Explain why this person is memorable, using quotes from the poem.",
+          "From your study of poetry, select a poem that explores the theme of youth or growing up. Discuss how this theme is presented by the poet.",
+          "Choose a poem you have studied that creates a strong sense of place or nature. Explain how the poet achieves this, supporting your answer with reference to the poem.",
+          "Select a poem you have studied that left a lasting impression on you because of its ending. Explain why the ending was effective, referring to the text."
+        ],
+        drama: [
+          "Choose a Shakespearean play you have studied. Select a scene that you found highly dramatic or tense. Explain how the playwright created this drama.",
+          "Identify a character from a play you have studied who you feel is treated unfairly. Discuss why you think they are treated unfairly, supporting your answer with reference to the text.",
+          "From a play you have studied, choose a moment where a character makes a difficult decision. Explain the reasons for their decision and its consequences.",
+          "Choose a relationship between two characters in a play you have studied. How does this relationship change or develop as the play progresses?",
+          "Select a play you have studied. Discuss how a central theme (such as justice, revenge, or loyalty) is explored by the playwright.",
+          "Choose a villain or antagonist from a play you have studied. Explain what makes this character effective on stage, supporting your answer with reference to the play.",
+          "Select the opening scene of a play you have studied. Explain how the playwright captures the audience's attention right from the start."
+        ],
+        novel: [
+          "Choose a novel you have studied. Describe a key moment in the plot that changes the course of the story, supporting your answer with reference to the text.",
+          "Select a character from a novel you have studied who faces a difficult challenge. Explain how the character deals with this challenge.",
+          "Identify a setting or place in a novel you have studied that is vividly described. How does the author bring this setting to life?",
+          "Choose a novel you have studied that has a powerful ending. Did you find the ending satisfying? Explain your answer with reference to the novel.",
+          "From your study of a novel, select a character you admired or strongly disliked. Explain the reasons for your feelings, referring to the text.",
+          "Choose a novel you have studied where friendship or family plays an important role. Discuss how this theme is shown through key moments in the story.",
+          "Select a novel you have studied in which a character learns an important lesson or changes significantly. Explain what causes this change."
+        ]
+      },
+      history: {
+        people: [
+          "Select a named person from history you have studied. Describe their contribution to a key historical event.",
+          "Choose a leader involved in a major 20th-century conflict. Discuss their actions and impact.",
+          "Write about the life and work of a key figure during the Renaissance or Reformation.",
+          "Select a revolutionary leader from Irish or European history (e.g., Wolfe Tone, Michael Collins, or George Washington). Explain their main aims and impact.",
+          "Choose a scientist, inventor, or explorer you have studied. Explain how their discoveries changed the world.",
+          "Select a ruler or political leader from Ancient Rome or Medieval Europe. Discuss how they gained and kept power."
+        ],
+        events: [
+          "Choose a major historical event you have studied. Explain the main causes of this event.",
+          "Describe the consequences of a major revolution or rebellion you have studied.",
+          "Explain the impact of the Industrial Revolution on living and working conditions.",
+          "Discuss the causes and impact of the Great Famine in Ireland during the 1840s.",
+          "Explain how life changed for ordinary people during World War II (or The Emergency in Ireland).",
+          "Describe the key events and significance of the 1916 Easter Rising or the Irish War of Independence.",
+          "Explain the main causes and consequences of the Cold War or the fall of the Berlin Wall."
+        ],
+        sources: [
+          "Explain the difference between primary and secondary sources, giving one example of each.",
+          "Why is it important for historians to check sources for bias? Support your answer with an example.",
+          "Describe the work of an archaeologist and how they help uncover the past.",
+          "Explain how historians use census records, newspapers, or diaries to learn about life in the past.",
+          "Discuss the strengths and limitations of using photographs or propaganda posters as historical evidence.",
+          "Explain how methods such as stratigraphy and carbon dating help archaeologists date artefacts."
+        ]
+      },
+      science: {
+        biology: [
+          "Explain the process of photosynthesis and why it is important for life on Earth.",
+          "Describe the function of the human heart and how it pumps blood around the body.",
+          "Discuss the differences between plant and animal cells.",
+          "Explain how the human digestive system breaks down food and absorbs nutrients.",
+          "Describe the role of microorganisms (bacteria and fungi) in ecosystems and human health.",
+          "Explain how energy flows through a food chain and why energy is lost at each trophic level.",
+          "Discuss how human activities can positively or negatively affect biodiversity in an ecosystem."
+        ],
+        chemistry: [
+          "Explain the difference between an element, a compound, and a mixture.",
+          "Describe the properties of the three states of matter (solid, liquid, gas).",
+          "What happens during a chemical reaction? Provide one example.",
+          "Explain how you would separate a mixture of salt, sand, and water in the laboratory.",
+          "Describe the difference between acids and bases, and explain how the pH scale is used to identify them.",
+          "Explain how temperature and surface area affect the rate of a chemical reaction.",
+          "Describe the structure of an atom, including the location and charge of protons, neutrons, and electrons."
+        ],
+        physics: [
+          "Explain the concept of energy conservation and give a real-world example.",
+          "Describe how forces affect the motion of an object.",
+          "Explain the difference between renewable and non-renewable energy sources.",
+          "Describe the difference between series and parallel electrical circuits, including one advantage of parallel circuits.",
+          "Explain how heat is transferred by conduction, convection, and radiation.",
+          "Describe the relationship between speed, distance, and time, using an everyday example.",
+          "Explain how light is reflected and refracted when it hits different surfaces."
+        ]
+      },
+      geography: {
+        physical: [
+          "Explain one process of coastal erosion and name a landform created by it.",
+          "Describe how a volcano is formed, referencing tectonic plate boundaries.",
+          "Explain the formation of a V-shaped valley in a river's upper course.",
+          "Explain how earthquakes occur at plate boundaries and describe one way their impact can be reduced.",
+          "Describe the formation of a meander and an ox-bow lake in the middle or lower course of a river.",
+          "Explain how limestone landscapes (karst) are formed through carbonation, naming one Irish example.",
+          "Describe the processes of erosion and deposition involved in glaciation, naming one glacial landform."
+        ],
+        human: [
+          "Discuss two pull factors that encourage people to migrate to a city.",
+          "Explain the impact of rapid population growth on a developing country.",
+          "Describe one problem caused by traffic congestion in urban areas.",
+          "Explain two push factors that cause people to leave rural areas in Ireland or abroad.",
+          "Discuss how a city's land use changes from the Central Business District (CBD) to the suburbs.",
+          "Explain the causes and consequences of forced migration (refugees) in the modern world."
+        ],
+        economic: [
+          "Explain the difference between primary, secondary, and tertiary economic activities.",
+          "Discuss the environmental impacts of a specific primary economic activity.",
+          "Explain the importance of tourism to the Irish economy.",
+          "Explain the factors that influence the location of a factory (secondary economic activity).",
+          "Discuss the causes and impacts of climate change on global agriculture or coastal communities.",
+          "Explain how renewable energy sources can help reduce Ireland's reliance on fossil fuels."
+        ]
+      }
+    };
+
+    // DOM Elements
+    const els = {
+      headerTitle: document.getElementById('header-title'),
+      headerSubtitle: document.getElementById('header-subtitle'),
+      headerIconContainer: document.getElementById('header-icon-container'),
+      headerIcon: document.getElementById('header-icon'),
+      
+      subjEnglish: document.getElementById('subj-english'),
+      subjHistory: document.getElementById('subj-history'),
+      subjScience: document.getElementById('subj-science'),
+      subjGeography: document.getElementById('subj-geography'),
+      
+      storageInfoBanner: document.getElementById('storage-info-banner'),
+      storageInfoIcon: document.getElementById('storage-info-icon'),
+      
+      btnProgress: document.getElementById('tab-progress'),
+      btnCloseProgress: document.getElementById('btn-close-progress'),
+      progressOverlay: document.getElementById('progress-overlay'),
+      progressCount: document.getElementById('progress-count'),
+      btnClear: document.getElementById('btn-clear'),
+      btnExample: document.getElementById('btn-example'),
+      btnCopyReport: document.getElementById('btn-copy-report'),
+      btnDownloadReport: document.getElementById('btn-download-report'),
+      copyToast: document.getElementById('copy-toast'),
+      btnClearHistory: document.getElementById('btn-clear-history'),
+      clearHistoryConfirm: document.getElementById('clear-history-confirm'),
+      btnConfirmClearYes: document.getElementById('btn-confirm-clear-yes'),
+      btnConfirmClearNo: document.getElementById('btn-confirm-clear-no'),
+      
+      viewWorkspace: document.getElementById('view-workspace'),
+      viewProgress: document.getElementById('view-progress'),
+      
+      categoryWrapper: document.getElementById('category-wrapper'),
+      questionListContainer: document.getElementById('question-list-container'),
+      questionList: document.getElementById('question-list'),
+      customInputs: document.getElementById('custom-inputs'),
+      inputQuestion: document.getElementById('input-question'),
+      inputReference: document.getElementById('input-reference'),
+      
+      draftTitle: document.getElementById('draft-title'),
+      labelP: document.getElementById('label-p'),
+      labelI: document.getElementById('label-p2'), // I or F
+      labelE: document.getElementById('label-e'),  // E or S
+      inputPoint: document.getElementById('input-point'),
+      inputEvidence: document.getElementById('input-evidence'),
+      inputExplain: document.getElementById('input-explain'),
+      countPoint: document.getElementById('count-point'),
+      countEvidence: document.getElementById('count-evidence'),
+      countExplain: document.getElementById('count-explain'),
+      
+      btnFeedback: document.getElementById('btn-feedback'),
+      feedbackBg: document.getElementById('feedback-bg'),
+      errorMessage: document.getElementById('error-message'),
+      feedbackEmpty: document.getElementById('feedback-empty'),
+      feedbackLoading: document.getElementById('feedback-loading'),
+      feedbackContent: document.getElementById('feedback-content'),
+      
+      progressEmpty: document.getElementById('progress-empty'),
+      progressGrid: document.getElementById('progress-grid'),
+      btnStartAnswer: document.getElementById('btn-start-answer')
+    };
+
+    // --- Initialization ---
+    async function init() {
+      setupEventListeners();
+      loadHistoryFromStorage();
+      render();
+    }
+
+    function loadHistoryFromStorage() {
+      try {
+        const saved = localStorage.getItem(state.storageKey);
+        if (saved) {
+          state.progressHistory = JSON.parse(saved);
+        }
+      } catch (e) {
+        console.warn("Could not load history from storage", e);
+      }
+    }
+
+    function saveHistoryToStorage() {
+      try {
+        localStorage.setItem(state.storageKey, JSON.stringify(state.progressHistory));
+      } catch (e) {
+        console.warn("Could not save history to storage", e);
+      }
+    }
+
+    // --- Core Logic ---
+    function setupEventListeners() {
+      // Subject Switching
+      els.subjEnglish.addEventListener('click', () => { 
+        state.activeSubject = 'english'; 
+        state.activeCategory = 'poetry';
+        handleClear();
+      });
+      els.subjHistory.addEventListener('click', () => { 
+        state.activeSubject = 'history'; 
+        state.activeCategory = 'events';
+        handleClear();
+      });
+      els.subjScience.addEventListener('click', () => { 
+        state.activeSubject = 'science'; 
+        state.activeCategory = 'biology';
+        handleClear();
+      });
+      els.subjGeography.addEventListener('click', () => { 
+        state.activeSubject = 'geography'; 
+        state.activeCategory = 'physical';
+        handleClear();
+      });
+      
+      els.btnProgress.addEventListener('click', () => { state.isProgressOpen = true; render(); });
+      els.btnCloseProgress.addEventListener('click', () => { state.isProgressOpen = false; render(); });
+      els.progressOverlay.addEventListener('click', () => { state.isProgressOpen = false; render(); });
+      els.btnStartAnswer.addEventListener('click', () => { state.isProgressOpen = false; render(); });
+      
+      els.btnClear.addEventListener('click', handleClear);
+      els.btnExample.addEventListener('click', handleExample);
+      els.btnCopyReport.addEventListener('click', handleCopyReport);
+      els.btnDownloadReport.addEventListener('click', handleDownloadReport);
+      
+      els.btnClearHistory.addEventListener('click', () => {
+        els.btnClearHistory.classList.add('hidden');
+        els.clearHistoryConfirm.classList.remove('hidden');
+        els.clearHistoryConfirm.classList.add('flex');
+      });
+
+      els.btnConfirmClearNo.addEventListener('click', () => {
+        els.clearHistoryConfirm.classList.add('hidden');
+        els.clearHistoryConfirm.classList.remove('flex');
+        els.btnClearHistory.classList.remove('hidden');
+      });
+
+      els.btnConfirmClearYes.addEventListener('click', () => {
+        state.progressHistory = [];
+        saveHistoryToStorage();
+        els.clearHistoryConfirm.classList.add('hidden');
+        els.clearHistoryConfirm.classList.remove('flex');
+        render();
+      });
+      
+      els.btnFeedback.addEventListener('click', handleGetFeedback);
+
+      els.inputQuestion.addEventListener('input', (e) => { state.question = e.target.value; renderUIOnly(); });
+      els.inputReference.addEventListener('input', (e) => { state.referenceText = e.target.value; renderUIOnly(); });
+      els.inputPoint.addEventListener('input', (e) => { state.point = e.target.value; renderUIOnly(); });
+      els.inputEvidence.addEventListener('input', (e) => { state.evidence = e.target.value; renderUIOnly(); });
+      els.inputExplain.addEventListener('input', (e) => { state.explain = e.target.value; renderUIOnly(); });
+      
+      // Dynamic category buttons are set up in `render`
+    }
+
+    function countWords(text) {
+      return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+    }
+
+    function generateReportText() {
+      if (state.progressHistory.length === 0) return '';
+      
+      let report = `DRAFTCRAFT - PROGRESS REPORT\n`;
+      report += `Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\n`;
+      report += `Total Completed Answers: ${state.progressHistory.length}\n`;
+      report += `==================================================\n\n`;
+
+      state.progressHistory.forEach((entry, index) => {
+        const num = state.progressHistory.length - index;
+        const subj = entry.subject || 'english';
+        const conf = subjectConfig[subj];
+        
+        report += `ANSWER #${num} (${conf.title.toUpperCase()} - ${entry.category.toUpperCase()}) - ${new Date(entry.timestamp).toLocaleDateString()}\n`;
+        report += `QUESTION: ${entry.question}\n\n`;
+        report += `[${conf.labels.p.charAt(0)}] ${conf.labels.p.toUpperCase()}:\n${entry.point || '(None)'}\n\n`;
+        report += `[${conf.labels.i.charAt(0)}] ${conf.labels.i.toUpperCase()}:\n${entry.evidence || '(None)'}\n\n`;
+        report += `[${conf.labels.e.charAt(0)}] ${conf.labels.e.toUpperCase()}:\n${entry.explain || '(None)'}\n\n`;
+        report += `--- TUTOR FEEDBACK ---\n${entry.feedback.replace(/\*\*/g, '')}\n`;
+        report += `==================================================\n\n`;
+      });
+
+      return report;
+    }
+
+    function handleCopyReport() {
+      const report = generateReportText();
+      if (!report) return;
+
+      const textArea = document.createElement('textarea');
+      textArea.value = report;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      document.body.appendChild(textArea);
+      textArea.select();
+      
+      try {
+        document.execCommand('copy');
+        els.copyToast.classList.remove('hidden');
+        setTimeout(() => els.copyToast.classList.add('hidden'), 3000);
+      } catch (err) {
+        console.error('Failed to copy report:', err);
+      }
+      document.body.removeChild(textArea);
+    }
+
+    function handleDownloadReport() {
+      const report = generateReportText();
+      if (!report) return;
+
+      const blob = new Blob([report], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `DraftCraft_Progress_${new Date().toISOString().split('T')[0]}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function handleClear() {
+      state.referenceText = '';
+      state.question = '';
+      state.point = '';
+      state.evidence = '';
+      state.explain = '';
+      state.feedback = '';
+      state.error = '';
+      render();
+    }
+
+    function handleExample() {
+      const conf = subjectConfig[state.activeSubject].example;
+      state.referenceText = conf.ref;
+      state.showRef = !!conf.ref;
+      state.question = conf.q;
+      state.activeCategory = conf.cat;
+      state.point = conf.p;
+      state.evidence = conf.i;
+      state.explain = conf.e;
+      state.feedback = '';
+      state.error = '';
+      render();
+    }
+
+    async function handleGetFeedback() {
+      if (!API_KEY) {
+        state.error = "API Key is missing! Please open index.html and paste your key at the top.";
+        render();
+        return;
+      }
+
+      const conf = subjectConfig[state.activeSubject];
+      const fullDraft = `${conf.labels.p}: ${state.point}\n${conf.labels.i}: ${state.evidence}\n${conf.labels.e}: ${state.explain}`;
+      
+      if (!state.question.trim() || (!state.point.trim() && !state.evidence.trim() && !state.explain.trim())) {
+        state.error = 'Please provide an exam question and at least some of your draft answer.';
+        render();
+        return;
+      }
+
+      state.isLoading = true;
+      state.error = '';
+      state.feedback = '';
+      render();
+
+      const modelsToTry = [
+        "gemini-3-flash-preview",
+        "gemini-3.5-flash-lite",
+        "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
+        "gemini-1.5-flash"
+      ];
+
+      let success = false;
+      let generatedFeedback = '';
+
+      const systemPrompt = `You are an expert, highly encouraging ${conf.systemRole}. The student is practicing exam questions. 
+        
+        CRITICAL INSTRUCTION FOR READABILITY (Dyslexia-friendly):
+        - Write in extremely short, simple sentences (maximum 15 words per sentence).
+        - NEVER write dense paragraphs. Every single idea must be a separate bullet point.
+        - ${conf.focusInstruction}
+        
+        PEDAGOGICAL GOAL: Provide detailed, meaningful, and actionable feedback to improve their grade. Push them to analyze deeper. Use sophisticated but accessible vocabulary.
+        
+        Review their draft based on the reference text and question. Structure your feedback EXACTLY with these exact text headings (do not use markdown asterisks for these headings):
+        
+        What You Did Well:
+        - [1-2 short bullet points praising their ${conf.labels.p}, ${conf.labels.i}, or ${conf.labels.e}]
+        
+        How to Improve Your Grade:
+        - [Provide 3 to 4 detailed, highly actionable bullet points.]
+        - [Keep sentences short and punchy, but give enough detail so the student knows exactly what to do.]
+        - [Clearly explain *what* they should add to their answer and *why* it will get them more marks.]
+        
+        Example Upgrade:
+        - [Provide a short example of how a top-grade student might expand on their '${conf.labels.e}' section to show deeper understanding. Give them the exact vocabulary to use.]`;
+
+      const userPrompt = `Reference Text:\n${state.referenceText || "None provided"}\n\nExam Question:\n${state.question}\n\nStudent's Draft:\n${fullDraft}`;
+
+      const payload = {
+        contents: [{ parts: [{ text: userPrompt }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+      };
+
+      for (const modelName of modelsToTry) {
+        try {
+          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${API_KEY}`;
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          if (!response.ok) continue;
+
+          const result = await response.json();
+          const candidate = result.candidates?.[0];
+
+          if (candidate && candidate.content?.parts?.[0]?.text) {
+            generatedFeedback = candidate.content.parts[0].text;
+            success = true;
+            break;
+          }
+        } catch (err) {
+          console.warn(`Model ${modelName} failed, trying next...`, err);
+        }
+      }
+
+      if (success) {
+        state.feedback = generatedFeedback;
+        
+        const newEntry = {
+          id: Date.now().toString(),
+          subject: state.activeSubject,
+          question: state.question,
+          referenceText: state.referenceText,
+          point: state.point,
+          evidence: state.evidence,
+          explain: state.explain,
+          feedback: state.feedback,
+          category: state.activeCategory,
+          timestamp: Date.now(),
+        };
+
+        state.progressHistory.unshift(newEntry);
+        saveHistoryToStorage();
+      } else {
+        state.error = 'All AI models are currently busy or quota limits were reached. Please wait 30 seconds and try again.';
+      }
+
+      state.isLoading = false;
+      render();
+    }
+
+    function formatFeedbackHTML(text) {
+      if (!text) return '';
+      const blocks = [];
+      let currentBlock = { type: 'general', title: '', content: [] };
+      const lines = text.split('\n');
+
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+        const lowerLine = trimmed.replace(/\*/g, '').toLowerCase();
+
+        if (lowerLine.includes('what you did well')) {
+          if (currentBlock.content.length > 0) blocks.push(currentBlock);
+          currentBlock = { type: 'praise', title: 'What You Did Well', content: [] };
+        } else if (lowerLine.includes('how to improve')) {
+          if (currentBlock.content.length > 0) blocks.push(currentBlock);
+          currentBlock = { type: 'improve', title: 'How to Improve Your Grade', content: [] };
+        } else if (lowerLine.includes('example upgrade')) {
+          if (currentBlock.content.length > 0) blocks.push(currentBlock);
+          currentBlock = { type: 'upgrade', title: 'Example Upgrade', content: [] };
+        } else {
+          currentBlock.content.push(trimmed);
+        }
+      });
+      if (currentBlock.content.length > 0) blocks.push(currentBlock);
+
+      return blocks.map(block => {
+        if (block.type === 'general' && block.content.length === 0) return '';
+        let bgClass = "bg-stone-50 border-stone-200";
+        let titleColor = "text-slate-800";
+        let iconName = "";
+
+        if (block.type === 'praise') {
+          bgClass = "bg-emerald-50 border-emerald-200";
+          titleColor = "text-emerald-800";
+          iconName = 'check-circle';
+        } else if (block.type === 'improve') {
+          bgClass = "bg-amber-50 border-amber-200";
+          titleColor = "text-amber-800";
+          iconName = 'trending-up';
+        } else if (block.type === 'upgrade') {
+          bgClass = "bg-indigo-50 border-indigo-200";
+          titleColor = "text-indigo-800";
+          iconName = 'sparkles';
+        }
+
+        let html = `<div class="mb-5 p-5 md:p-6 rounded-lg border shadow-sm ${bgClass}">`;
+        if (block.title) {
+          html += `<h4 class="flex items-center gap-3 font-bold text-[1.1rem] mb-4 pb-3 border-b border-black/10 ${titleColor}">
+            ${iconName ? `<i data-lucide="${iconName}" class="w-6 h-6"></i>` : ''}
+            ${block.title}
+          </h4>`;
+        }
+        html += `<div class="space-y-4 text-slate-800 text-[15px] md:text-base leading-loose tracking-wide">`;
+
+        block.content.forEach(line => {
+          const cleanLine = line.replace(/^[-*]\s*/, '');
+          const processLine = cleanLine.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold font-semibold text-slate-900">$1</strong>');
+          const isListItem = line.match(/^[-*]\s/);
+
+          html += `<div class="flex items-start gap-3">`;
+          if (isListItem) html += `<span class="text-black/30 font-black mt-1.5">•</span>`;
+          html += `<p>${processLine}</p></div>`;
+        });
+
+        html += `</div></div>`;
+        return html;
+      }).join('');
+    }
+
+    function renderUIOnly() {
+      els.inputQuestion.value = state.question;
+      els.inputReference.value = state.referenceText;
+      els.inputPoint.value = state.point;
+      els.inputEvidence.value = state.evidence;
+      els.inputExplain.value = state.explain;
+      
+      updateWordCount(els.countPoint, state.point, 15);
+      updateWordCount(els.countEvidence, state.evidence, 10);
+      updateWordCount(els.countExplain, state.explain, 30);
+    }
+
+    function updateWordCount(el, text, min) {
+      const count = countWords(text);
+      el.innerText = `${count} / ${min} words min`;
+      if (count >= min) {
+        el.className = `text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700`;
+      } else {
+        el.className = `text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700`;
+      }
+    }
+
+    function render() {
+      const conf = subjectConfig[state.activeSubject];
+      
+      // Update Subject Toggles
+      els.subjEnglish.className = `px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${state.activeSubject === 'english' ? 'bg-white shadow-sm text-purple-700 border border-stone-200' : 'text-slate-500 hover:bg-stone-200'}`;
+      els.subjHistory.className = `px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${state.activeSubject === 'history' ? 'bg-white shadow-sm text-amber-700 border border-stone-200' : 'text-slate-500 hover:bg-stone-200'}`;
+      els.subjScience.className = `px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${state.activeSubject === 'science' ? 'bg-white shadow-sm text-blue-700 border border-stone-200' : 'text-slate-500 hover:bg-stone-200'}`;
+      els.subjGeography.className = `px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${state.activeSubject === 'geography' ? 'bg-white shadow-sm text-emerald-700 border border-stone-200' : 'text-slate-500 hover:bg-stone-200'}`;
+      
+      // Update Header Theme
+      els.headerTitle.innerText = "DraftCraft";
+      els.headerIconContainer.className = `${conf.theme.bg} p-2.5 rounded-lg shadow-sm`;
+      els.headerIcon.setAttribute('data-lucide', 'pen-tool'); // Reverted to the clean pen-tool icon
+      
+      els.storageInfoBanner.className = `${conf.theme.infoAlert || 'bg-stone-100 border-stone-200'} rounded-lg p-4 mb-6 text-sm flex items-start gap-3 transition-colors`;
+      els.storageInfoIcon.className = `w-5 h-5 ${conf.theme.iconInner} flex-shrink-0 mt-0.5 transition-colors`;
+
+      // Update Labels & Placeholders
+      els.draftTitle.innerHTML = `<i data-lucide="pen-tool" class="w-5 h-5 ${conf.theme.iconInner}"></i> ${conf.draftTitle}`;
+      
+      els.labelP.innerText = conf.labels.p;
+      els.labelP.className = `block text-sm font-bold ${conf.colors.p}`;
+      els.inputPoint.placeholder = conf.placeholders.p;
+      els.inputPoint.className = `w-full p-3 rounded-lg bg-stone-50 border ${conf.borderColors.p} text-slate-900 placeholder-slate-400 focus:ring-2 ${conf.focusColors.p} min-h-[80px] resize-y`;
+
+      els.labelI.innerText = conf.labels.i;
+      els.labelI.className = `block text-sm font-bold ${conf.colors.i}`;
+      els.inputEvidence.placeholder = conf.placeholders.i;
+      els.inputEvidence.className = `w-full p-3 rounded-lg bg-stone-50 border ${conf.borderColors.i} text-slate-900 placeholder-slate-400 focus:ring-2 ${conf.focusColors.i} min-h-[80px] resize-y`;
+
+      els.labelE.innerText = conf.labels.e;
+      els.labelE.className = `block text-sm font-bold ${conf.colors.e}`;
+      els.inputExplain.placeholder = conf.placeholders.e;
+      els.inputExplain.className = `w-full p-3 rounded-lg bg-stone-50 border ${conf.borderColors.e} text-slate-900 placeholder-slate-400 focus:ring-2 ${conf.focusColors.e} min-h-[120px] resize-y`;
+
+      // Render Categories
+      els.categoryWrapper.innerHTML = '';
+      conf.categories.forEach(cat => {
+        const btn = document.createElement('button');
+        const isActive = state.activeCategory === cat.id && !state.showRef;
+        const isCustomAndActive = cat.id === 'custom' && (state.activeCategory === 'custom' || state.showRef);
+        
+        if (isActive || isCustomAndActive) {
+          btn.className = `px-4 py-2 rounded-lg text-sm font-bold capitalize transition-all ${conf.theme.bg} text-white shadow-md`;
+        } else {
+          btn.className = `px-4 py-2 rounded-lg text-sm font-bold capitalize transition-all bg-stone-100 text-slate-600 hover:bg-stone-200`;
+        }
+        
+        btn.innerText = cat.label;
+        btn.onclick = () => {
+          state.activeCategory = cat.id;
+          state.showRef = cat.id === 'custom';
+          render();
+        };
+        els.categoryWrapper.appendChild(btn);
+      });
+
+      // Update Feedback Button & Bg
+      els.feedbackBg.className = `absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl pointer-events-none transition-colors ${conf.theme.bgLight}`;
+      els.btnFeedback.disabled = state.isLoading;
+      els.btnFeedback.className = `w-full flex justify-center items-center gap-2 px-4 py-3 rounded-lg font-bold text-lg transition-all ${state.isLoading ? 'bg-stone-300 text-stone-600 cursor-not-allowed' : `${conf.theme.bg} ${conf.theme.hover} text-white shadow-md ${conf.theme.shadow} hover:-translate-y-0.5`}`;
+      els.btnFeedback.innerHTML = state.isLoading ? '<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Analyzing Draft...' : '<i data-lucide="send" class="w-5 h-5"></i> Get Feedback';
+
+      renderUIOnly();
+
+      // View Switching (Slide-out panel)
+      if (state.isProgressOpen) {
+        els.viewProgress.classList.remove('translate-x-full');
+        els.progressOverlay.classList.remove('hidden');
+        setTimeout(() => els.progressOverlay.classList.remove('opacity-0'), 10);
+      } else {
+        els.viewProgress.classList.add('translate-x-full');
+        els.progressOverlay.classList.add('opacity-0');
+        setTimeout(() => els.progressOverlay.classList.add('hidden'), 300); // Wait for transition
+      }
+      
+      els.btnProgress.className = `flex items-center justify-center gap-2 px-5 h-[44px] rounded-lg font-bold text-sm transition-all bg-white shadow-sm ${conf.theme.text} hover:bg-stone-50 border border-stone-200 whitespace-nowrap`;
+      els.progressCount.innerText = state.progressHistory.length;
+
+      // Question List
+      if (state.activeCategory !== 'custom' && !state.showRef) {
+        els.questionListContainer.classList.remove('hidden');
+        els.customInputs.classList.add('hidden');
+        els.questionList.innerHTML = '';
+        
+        const questions = questionBanks[state.activeSubject][state.activeCategory] || [];
+        questions.forEach((q, idx) => {
+          const isSelected = state.question === q;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = `group w-full text-left p-3.5 rounded-xl text-sm transition-all border-2 flex items-start gap-3 cursor-pointer ${
+            isSelected
+              ? `${conf.theme.bgLight} ${conf.theme.border} shadow-sm font-semibold text-slate-900`
+              : 'bg-white border-stone-200/80 text-slate-700 hover:border-stone-300 hover:bg-stone-50/90 hover:shadow-sm'
+          }`;
+          
+          btn.innerHTML = `
+            <span class="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center transition-colors border-2 ${
+              isSelected
+                ? `${conf.theme.bg} border-transparent text-white`
+                : 'border-stone-300 bg-white group-hover:border-slate-400'
+            }">
+              ${isSelected ? '<i data-lucide="check" class="w-3 h-3 stroke-[3]"></i>' : `<span class="text-[10px] font-bold text-slate-400 group-hover:text-slate-600">${idx + 1}</span>`}
+            </span>
+            <span class="leading-snug flex-grow">${q}</span>
+          `;
+          
+          btn.onclick = () => { state.question = q; render(); };
+          els.questionList.appendChild(btn);
+        });
+      } else {
+        els.questionListContainer.classList.add('hidden');
+        els.customInputs.classList.remove('hidden');
+      }
+
+      // Errors and Feedback Content
+      if (state.error) {
+        els.errorMessage.classList.remove('hidden');
+        els.errorMessage.innerText = state.error;
+      } else {
+        els.errorMessage.classList.add('hidden');
+      }
+
+      els.feedbackEmpty.classList.toggle('hidden', state.feedback !== '' || state.isLoading);
+      els.feedbackLoading.classList.toggle('hidden', !state.isLoading);
+      els.feedbackContent.classList.toggle('hidden', state.feedback === '' || state.isLoading);
+
+      if (state.feedback && !state.isLoading) {
+        els.feedbackContent.innerHTML = formatFeedbackHTML(state.feedback);
+      } else {
+        els.feedbackContent.innerHTML = '';
+      }
+
+      // Progress History Render
+      els.progressEmpty.classList.toggle('hidden', state.progressHistory.length > 0);
+      els.progressGrid.classList.toggle('hidden', state.progressHistory.length === 0);
+      
+      const hasHistory = state.progressHistory.length > 0;
+      els.btnCopyReport.classList.toggle('hidden', !hasHistory);
+      els.btnCopyReport.classList.toggle('flex', hasHistory);
+      els.btnDownloadReport.classList.toggle('hidden', !hasHistory);
+      els.btnDownloadReport.classList.toggle('flex', hasHistory);
+
+      if (hasHistory && els.clearHistoryConfirm.classList.contains('hidden')) {
+        els.btnClearHistory.classList.remove('hidden');
+        els.btnClearHistory.classList.add('flex');
+      } else {
+        els.btnClearHistory.classList.add('hidden');
+        els.btnClearHistory.classList.remove('flex');
+      }
+      
+      els.progressGrid.innerHTML = '';
+      state.progressHistory.forEach(entry => {
+        const entrySubj = entry.subject || 'english';
+        const entryConf = subjectConfig[entrySubj];
+        
+        const card = document.createElement('div');
+        card.className = "bg-white rounded-lg shadow-sm border border-stone-200 p-5 flex flex-col hover:shadow-md transition-shadow";
+        card.innerHTML = `
+          <div class="flex justify-between items-start mb-3 border-b border-stone-100 pb-3">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 bg-stone-100 text-stone-600 text-[10px] font-black rounded-md uppercase tracking-wider">${entryConf.title.split(' ').pop()}</span>
+              <span class="px-2 py-0.5 ${entryConf.theme.badge} text-xs font-bold rounded-full capitalize border">${entry.category}</span>
+            </div>
+            <span class="text-xs font-semibold text-slate-400 bg-stone-50 px-2 py-1 rounded-md">${new Date(entry.timestamp).toLocaleDateString()}</span>
+          </div>
+          <h4 class="font-bold text-slate-800 text-sm mb-3 line-clamp-3 leading-snug">${entry.question}</h4>
+          <div class="text-sm text-slate-600 mb-4 flex-grow bg-stone-50 p-3 rounded-lg border border-stone-100 flex flex-col gap-2">
+            <div class="line-clamp-2"><strong class="${entryConf.colors.p}">${entryConf.labels.p.charAt(0)}:</strong> <span class="italic">"${entry.point}"</span></div>
+            <div class="line-clamp-2"><strong class="${entryConf.colors.i}">${entryConf.labels.i.charAt(0)}:</strong> <span class="italic">"${entry.evidence}"</span></div>
+            <div class="line-clamp-2"><strong class="${entryConf.colors.e}">${entryConf.labels.e.charAt(0)}:</strong> <span class="italic">"${entry.explain}"</span></div>
+          </div>
+          <button class="w-full flex justify-center items-center gap-2 py-2.5 ${entryConf.theme.bgLight} ${entryConf.theme.text} font-bold rounded-lg text-sm transition-colors border ${entryConf.theme.border} review-btn">
+            <i data-lucide="book-open" class="w-4 h-4"></i> Review Feedback
+          </button>
+        `;
+        
+        const btn = card.querySelector('.review-btn');
+        btn.onclick = () => {
+          state.activeSubject = entrySubj;
+          state.question = entry.question;
+          state.referenceText = entry.referenceText || '';
+          state.showRef = !!entry.referenceText;
+          state.activeCategory = entry.category;
+          state.point = entry.point;
+          state.evidence = entry.evidence;
+          state.explain = entry.explain;
+          state.feedback = entry.feedback || '';
+          state.isProgressOpen = false;
+          render();
+        };
+
+        els.progressGrid.appendChild(card);
+      });
+
+      lucide.createIcons();
+    }
+
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</head>
+<body class="min-h-screen bg-stone-50 text-slate-800 font-sans selection:bg-purple-200">
+  
+  <header class="bg-white border-b border-stone-200 shadow-sm sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      
+      <!-- Top Row: Brand, Cycle Toggles & Progress -->
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+        <div class="flex items-center gap-3">
+          <div id="header-icon-container" class="bg-purple-600 p-2.5 rounded-lg shadow-sm transition-colors">
+            <i id="header-icon" data-lucide="pen-tool" class="w-6 h-6 text-white"></i>
+          </div>
+          <div>
+            <h1 id="header-title" class="text-2xl font-black text-slate-900 tracking-tight transition-colors">DraftCraft</h1>
+            <p id="header-subtitle" class="text-sm text-slate-500 font-semibold transition-colors">Structured Exam Writing Coach</p>
+          </div>
+        </div>
+        
+        <div class="flex flex-wrap items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+          <div class="flex items-center bg-stone-100 p-1 h-[44px] rounded-lg border border-stone-200 flex-shrink-0">
+            <button class="px-3.5 h-full flex items-center justify-center rounded-lg text-sm font-bold transition-all bg-white shadow-sm text-slate-800 border border-stone-200 whitespace-nowrap">
+              Junior Cycle
+            </button>
+            <button class="px-3.5 h-full flex items-center justify-center rounded-lg text-sm font-bold transition-all text-slate-400 cursor-not-allowed whitespace-nowrap" disabled title="Coming Soon">
+              Senior Cycle
+            </button>
+          </div>
+
+          <button id="tab-progress" class="flex items-center justify-center gap-2 px-5 h-[44px] rounded-lg font-bold text-sm transition-all border border-stone-200 whitespace-nowrap shadow-sm bg-white text-purple-700 hover:bg-stone-50">
+            <i data-lucide="history" class="w-4 h-4"></i>
+            <span>Progress (<span id="progress-count">0</span>)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Bottom Row: Subject Toggles -->
+      <div class="flex items-center gap-3 overflow-x-auto custom-scrollbar pb-1">
+        <div class="flex bg-stone-100 p-1 rounded-lg border border-stone-200 flex-shrink-0">
+          <button id="subj-english" class="px-4 py-2 rounded-lg text-sm font-bold transition-all bg-white shadow-sm text-purple-700 border border-stone-200 whitespace-nowrap">
+            English
+          </button>
+          <button id="subj-history" class="px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-500 hover:bg-stone-200 whitespace-nowrap">
+            History
+          </button>
+          <button id="subj-science" class="px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-500 hover:bg-stone-200 whitespace-nowrap">
+            Science
+          </button>
+          <button id="subj-geography" class="px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-500 hover:bg-stone-200 whitespace-nowrap">
+            Geography
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 h-[calc(100vh-140px)]">
+    
+    <main id="view-workspace" class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 h-full">
+      <div class="flex flex-col gap-6 overflow-y-auto pr-2 pb-8 custom-scrollbar">
+        
+        <div class="bg-white rounded-lg shadow-sm border border-stone-200 p-5 md:p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
+              <i data-lucide="file-text" class="w-5 h-5 text-slate-400"></i>
+              1. Choose a Question
+            </h2>
+            <span class="text-[10px] uppercase tracking-wider font-bold text-slate-400 bg-stone-100 px-2 py-1 rounded-lg">Click to select</span>
+          </div>
+          
+          <div id="category-wrapper" class="flex flex-wrap gap-2 mb-4">
+            <!-- Buttons dynamically generated -->
+          </div>
+
+          <div id="question-list-container" class="bg-stone-50 border border-stone-200 rounded-lg p-3 max-h-60 overflow-y-auto custom-scrollbar">
+            <div id="question-list" class="flex flex-col gap-2"></div>
+          </div>
+
+          <div id="custom-inputs" class="space-y-4 hidden">
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-1">Your Exam Question</label>
+              <textarea id="input-question" placeholder="Type your exam question here..." class="w-full p-3 rounded-lg bg-stone-50 border border-stone-200 text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-slate-400 focus:border-slate-400 min-h-[80px] resize-y"></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-1">Reference Text (Optional)</label>
+              <textarea id="input-reference" placeholder="Paste a poem, extract, or quote here..." class="w-full p-3 rounded-lg bg-stone-50 border border-stone-200 text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-slate-400 focus:border-slate-400 min-h-[120px] resize-y"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm border border-stone-200 p-5 md:p-6">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+            <h2 id="draft-title" class="text-lg font-semibold text-slate-900 flex items-center gap-2 transition-colors">
+              <i data-lucide="pen-tool" class="w-5 h-5"></i>
+              2. Draft Your Answer
+            </h2>
+            <div class="flex items-center gap-2">
+              <button id="btn-example" class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold transition-colors border border-emerald-200">
+                <i data-lucide="lightbulb" class="w-3.5 h-3.5"></i> Example
+              </button>
+              <button id="btn-clear" class="flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-slate-700 rounded-lg text-xs font-bold transition-colors border border-stone-200">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Clear
+              </button>
+            </div>
+          </div>
+          
+          <div class="space-y-4">
+            <div class="relative">
+              <div class="flex justify-between items-end mb-1">
+                <label id="label-p" class="block text-sm font-bold text-emerald-700 transition-colors">Point</label>
+                <span id="count-point" class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">0 / 15 words min</span>
+              </div>
+              <textarea id="input-point" class="w-full p-3 rounded-lg bg-stone-50 border transition-colors resize-y"></textarea>
+            </div>
+
+            <div class="relative">
+              <div class="flex justify-between items-end mb-1">
+                <label id="label-p2" class="block text-sm font-bold text-blue-700 transition-colors">Illustration</label>
+                <span id="count-evidence" class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">0 / 10 words min</span>
+              </div>
+              <textarea id="input-evidence" class="w-full p-3 rounded-lg bg-stone-50 border transition-colors resize-y"></textarea>
+            </div>
+
+            <div class="relative">
+              <div class="flex justify-between items-end mb-1">
+                <label id="label-e" class="block text-sm font-bold text-purple-700 transition-colors">Explain</label>
+                <span id="count-explain" class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">0 / 30 words min</span>
+              </div>
+              <textarea id="input-explain" class="w-full p-3 rounded-lg bg-stone-50 border transition-colors resize-y"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-col h-full md:pb-8">
+        <div class="bg-white border border-stone-200 rounded-lg p-5 md:p-6 shadow-md flex-grow flex flex-col relative overflow-hidden h-full max-h-full">
+          <div id="feedback-bg" class="absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl pointer-events-none transition-colors"></div>
+          
+          <div class="flex flex-col gap-3 mb-4 z-10 flex-shrink-0">
+            <button id="btn-feedback" class="w-full flex justify-center items-center gap-2 px-4 py-3 rounded-lg font-bold text-lg transition-all shadow-md">
+              <i data-lucide="send" class="w-5 h-5"></i> Get Feedback
+            </button>
+            <div id="error-message" class="hidden text-red-700 text-sm bg-red-50 border border-red-200 rounded-lg p-3 text-center"></div>
+          </div>
+
+          <h3 class="text-lg font-semibold text-slate-900 mb-4 border-b border-stone-200 pb-3 flex items-center justify-between z-10 flex-shrink-0">
+            Tutor Feedback
+          </h3>
+          
+          <div class="flex-grow z-10 overflow-y-auto custom-scrollbar pr-2 pb-2">
+            
+            <div id="feedback-empty" class="h-full flex flex-col items-center justify-center text-slate-500 space-y-4 text-center mt-4">
+              <i data-lucide="message-square" class="w-12 h-12 text-slate-300"></i>
+              <p class="text-base md:text-lg max-w-[280px]">Submit your draft to receive detailed feedback on your structure, quotes, and formatting.</p>
+            </div>
+            
+            <div id="feedback-loading" class="hidden space-y-5 animate-pulse mt-2">
+              <div class="h-32 bg-stone-100 border border-stone-200 rounded-lg w-full"></div>
+              <div class="h-32 bg-stone-100 border border-stone-200 rounded-lg w-full"></div>
+              <div class="h-32 bg-stone-100 border border-stone-200 rounded-lg w-full"></div>
+            </div>
+            
+            <div id="feedback-content" class="hidden mt-1"></div>
+            
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Progress Sidebar Overlay -->
+  <div id="progress-overlay" class="fixed inset-0 bg-slate-900/40 z-40 hidden transition-opacity duration-300 opacity-0 backdrop-blur-sm"></div>
+
+  <!-- Progress Sidebar Panel -->
+  <aside id="view-progress" class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-stone-50 shadow-2xl transform translate-x-full transition-transform duration-300 flex flex-col border-l border-stone-200">
+    
+    <!-- Sidebar Header -->
+    <div class="flex items-center justify-between p-5 bg-white border-b border-stone-200">
+      <div class="flex items-center gap-3">
+        <i data-lucide="history" class="w-6 h-6 text-slate-400"></i>
+        <h2 class="text-xl font-bold text-slate-900">Your Progress</h2>
+      </div>
+      <button id="btn-close-progress" class="p-2 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors text-slate-600">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <!-- Sidebar Scrollable Content -->
+    <div class="flex-grow overflow-y-auto p-5 custom-scrollbar flex flex-col gap-5">
+      
+      <!-- Actions -->
+      <div class="flex flex-col gap-2">
+        <span id="copy-toast" class="hidden text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-lg text-center">
+          Copied to clipboard!
+        </span>
+        <div class="flex gap-2">
+          <button id="btn-copy-report" class="hidden flex-1 justify-center items-center gap-2 px-3 py-2.5 bg-white hover:bg-stone-100 text-slate-700 rounded-lg text-sm font-bold transition-colors border border-stone-200 shadow-sm">
+            <i data-lucide="copy" class="w-4 h-4"></i> Copy
+          </button>
+          <button id="btn-download-report" class="hidden flex-1 justify-center items-center gap-2 px-3 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-sm font-bold transition-colors border border-emerald-200 shadow-sm">
+            <i data-lucide="download" class="w-4 h-4"></i> Download
+          </button>
+        </div>
+        
+        <button id="btn-clear-history" class="hidden w-full justify-center items-center gap-2 px-3 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-sm font-bold transition-colors border border-red-200">
+          <i data-lucide="trash-2" class="w-4 h-4"></i> Clear All History
+        </button>
+        <div id="clear-history-confirm" class="hidden flex-col gap-2 bg-red-50 border border-red-200 p-3 rounded-lg text-center">
+          <span class="text-sm font-bold text-red-800">Delete all saved work?</span>
+          <div class="flex gap-2 w-full">
+            <button id="btn-confirm-clear-yes" class="flex-1 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-md transition shadow-sm">Yes, Delete</button>
+            <button id="btn-confirm-clear-no" class="flex-1 py-1.5 bg-white hover:bg-stone-100 text-slate-700 text-sm font-bold rounded-md border border-stone-200 transition shadow-sm">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Storage Info Banner -->
+      <div id="storage-info-banner" class="bg-violet-50 border border-violet-200 rounded-lg p-4 text-xs md:text-sm flex items-start gap-3 transition-colors shadow-sm">
+        <i id="storage-info-icon" data-lucide="info" class="w-5 h-5 text-violet-600 flex-shrink-0 mt-0.5 transition-colors"></i>
+        <div>
+          <span class="font-bold">How data storage works:</span> Work is saved privately in this browser. Use the <strong>Copy</strong> or <strong>Download</strong> buttons above anytime to back up your progress!
+        </div>
+      </div>
+      
+      <div id="progress-empty" class="bg-white rounded-lg shadow-sm border border-stone-200 p-8 text-center flex flex-col items-center">
+        <i data-lucide="clock" class="w-12 h-12 text-slate-300 mb-4"></i>
+        <h3 class="text-lg font-bold text-slate-700">No work saved yet</h3>
+        <p class="text-slate-500 mt-2 text-sm leading-relaxed">Your answers will be automatically saved here the moment you get feedback from the tutor!</p>
+        <button id="btn-start-answer" class="mt-6 w-full py-2.5 bg-slate-800 text-white rounded-lg font-bold hover:bg-slate-900 transition shadow-md">
+          Start an Answer
+        </button>
+      </div>
+
+      <!-- Grid changed to 1 column for sidebar -->
+      <div id="progress-grid" class="hidden grid grid-cols-1 gap-4 pb-4"></div>
+      
+    </div>
+  </aside>
+</body>
+</html>
