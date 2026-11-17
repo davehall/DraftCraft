@@ -64,6 +64,7 @@
       isScrolled: false,
       activeSubject: 'english', // 'english', 'history', 'science', 'geography'
       isProgressOpen: false,
+      isQuestionExpanded: true,
       activeCategory: 'poetry',
       showRef: false,
       question: '',
@@ -383,6 +384,13 @@
       viewWorkspace: document.getElementById('view-workspace'),
       viewProgress: document.getElementById('view-progress'),
       
+      questionCardTitle: document.getElementById('question-card-title'),
+      btnToggleQuestion: document.getElementById('btn-toggle-question'),
+      questionSelectionArea: document.getElementById('question-selection-area'),
+      selectedQuestionArea: document.getElementById('selected-question-area'),
+      displaySelectedQuestion: document.getElementById('display-selected-question'),
+      displaySelectedReference: document.getElementById('display-selected-reference'),
+
       categoryWrapper: document.getElementById('category-wrapper'),
       questionListContainer: document.getElementById('question-list-container'),
       questionList: document.getElementById('question-list'),
@@ -451,10 +459,35 @@
         }
       });
 
+      // Toggle Question Expansion
+      els.btnToggleQuestion.addEventListener('click', () => {
+        state.isQuestionExpanded = !state.isQuestionExpanded;
+        render();
+      });
+
       // Subject Switching
       els.subjEnglish.addEventListener('click', () => { 
         state.activeSubject = 'english'; 
         state.activeCategory = 'poetry';
+        state.isQuestionExpanded = true;
+        handleClear();
+      });
+      els.subjHistory.addEventListener('click', () => { 
+        state.activeSubject = 'history'; 
+        state.activeCategory = 'events';
+        state.isQuestionExpanded = true;
+        handleClear();
+      });
+      els.subjScience.addEventListener('click', () => { 
+        state.activeSubject = 'science'; 
+        state.activeCategory = 'biology';
+        state.isQuestionExpanded = true;
+        handleClear();
+      });
+      els.subjGeography.addEventListener('click', () => { 
+        state.activeSubject = 'geography'; 
+        state.activeCategory = 'physical';
+        state.isQuestionExpanded = true;
         handleClear();
       });
       els.subjHistory.addEventListener('click', () => { 
@@ -594,6 +627,7 @@
       state.explain = '';
       state.feedback = '';
       state.error = '';
+      state.isQuestionExpanded = true;
       render();
     }
 
@@ -608,6 +642,7 @@
       state.explain = conf.e;
       state.feedback = '';
       state.error = '';
+      state.isQuestionExpanded = false;
       render();
     }
 
@@ -852,23 +887,50 @@
       els.storageInfoBanner.className = `${conf.theme.infoAlert || 'bg-stone-100 border-stone-200'} rounded-lg p-4 text-xs md:text-sm flex items-start gap-3 transition-colors shadow-sm`;
       els.storageInfoIcon.className = `w-5 h-5 ${conf.theme.iconInner} flex-shrink-0 mt-0.5 transition-colors`;
 
+      // Update Question Focus Toggle
+      if (els.questionSelectionArea) {
+        els.questionSelectionArea.classList.toggle('hidden', !state.isQuestionExpanded);
+        els.selectedQuestionArea.classList.toggle('hidden', state.isQuestionExpanded);
+        
+        if (state.question || state.referenceText) {
+          els.btnToggleQuestion.classList.remove('hidden');
+          els.btnToggleQuestion.innerHTML = state.isQuestionExpanded 
+            ? '<i data-lucide="minimize-2" class="w-3.5 h-3.5"></i> Minimize' 
+            : '<i data-lucide="edit-2" class="w-3.5 h-3.5"></i> Change';
+        } else {
+          els.btnToggleQuestion.classList.add('hidden');
+        }
+
+        els.questionCardTitle.innerText = state.isQuestionExpanded ? 'Choose a Question' : 'Exam Question';
+        
+        if (!state.isQuestionExpanded) {
+          els.displaySelectedQuestion.innerText = state.question || "No question provided.";
+          if (state.referenceText) {
+            els.displaySelectedReference.classList.remove('hidden');
+            els.displaySelectedReference.innerText = state.referenceText;
+          } else {
+            els.displaySelectedReference.classList.add('hidden');
+          }
+        }
+      }
+
       // Update Labels & Placeholders
       els.draftTitle.innerHTML = `<i data-lucide="pen-tool" class="w-5 h-5 ${conf.theme.iconInner}"></i> ${conf.draftTitle}`;
       
       els.labelP.innerText = conf.labels.p;
       els.labelP.className = `block text-sm font-bold ${conf.colors.p}`;
       els.inputPoint.placeholder = conf.placeholders.p;
-      els.inputPoint.className = `w-full p-3 rounded-lg bg-stone-50 border ${conf.borderColors.p} text-slate-900 placeholder-slate-400 focus:ring-2 ${conf.focusColors.p} min-h-[80px] resize-y`;
+      els.inputPoint.className = `w-full p-3 rounded-lg bg-stone-50 border ${conf.borderColors.p} text-slate-900 placeholder-slate-400 focus:ring-2 ${conf.focusColors.p} min-h-[120px] resize-y`;
 
       els.labelI.innerText = conf.labels.i;
       els.labelI.className = `block text-sm font-bold ${conf.colors.i}`;
       els.inputEvidence.placeholder = conf.placeholders.i;
-      els.inputEvidence.className = `w-full p-3 rounded-lg bg-stone-50 border ${conf.borderColors.i} text-slate-900 placeholder-slate-400 focus:ring-2 ${conf.focusColors.i} min-h-[80px] resize-y`;
+      els.inputEvidence.className = `w-full p-3 rounded-lg bg-stone-50 border ${conf.borderColors.i} text-slate-900 placeholder-slate-400 focus:ring-2 ${conf.focusColors.i} min-h-[120px] resize-y`;
 
       els.labelE.innerText = conf.labels.e;
       els.labelE.className = `block text-sm font-bold ${conf.colors.e}`;
       els.inputExplain.placeholder = conf.placeholders.e;
-      els.inputExplain.className = `w-full p-3 rounded-lg bg-stone-50 border ${conf.borderColors.e} text-slate-900 placeholder-slate-400 focus:ring-2 ${conf.focusColors.e} min-h-[120px] resize-y`;
+      els.inputExplain.className = `w-full p-3 rounded-lg bg-stone-50 border ${conf.borderColors.e} text-slate-900 placeholder-slate-400 focus:ring-2 ${conf.focusColors.e} min-h-[160px] resize-y`;
 
       // Render Categories
       els.categoryWrapper.innerHTML = '';
@@ -942,7 +1004,11 @@
             <span class="leading-snug flex-grow">${q}</span>
           `;
           
-          btn.onclick = () => { state.question = q; render(); };
+          btn.onclick = () => { 
+            state.question = q; 
+            state.isQuestionExpanded = false; 
+            render(); 
+          };
           els.questionList.appendChild(btn);
         });
       } else {
@@ -1094,38 +1160,49 @@
   <div class="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 mb-12">
     
     <main id="view-workspace" class="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 items-start">
-      <div class="flex flex-col gap-6 md:col-span-7">
+      <div class="flex flex-col gap-6 md:col-span-8">
         
-        <div class="bg-white rounded-lg shadow-sm border border-stone-200 p-5 md:p-6">
+        <div class="bg-white rounded-lg shadow-sm border border-stone-200 p-5 md:p-6 transition-all duration-300">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
               <i data-lucide="file-text" class="w-5 h-5 text-slate-400"></i>
-              1. Choose a Question
+              1. <span id="question-card-title">Choose a Question</span>
             </h2>
-            <span class="text-[10px] uppercase tracking-wider font-bold text-slate-400 bg-stone-100 px-2 py-1 rounded-lg">Click to select</span>
+            <button id="btn-toggle-question" class="hidden flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-stone-100 hover:bg-stone-200 px-3 py-1.5 rounded-lg transition-colors border border-stone-200 shadow-sm">
+              <i data-lucide="edit-2" class="w-3.5 h-3.5"></i> Change
+            </button>
           </div>
           
-          <div id="category-wrapper" class="flex flex-wrap gap-2 mb-4">
-            <!-- Buttons dynamically generated -->
-          </div>
+          <div id="question-selection-area">
+            <div id="category-wrapper" class="flex flex-wrap gap-2 mb-4">
+              <!-- Buttons dynamically generated -->
+            </div>
 
-          <div id="question-list-container" class="bg-stone-50 border border-stone-200 rounded-lg p-3 max-h-60 overflow-y-auto custom-scrollbar">
-            <div id="question-list" class="flex flex-col gap-2"></div>
-          </div>
+            <div id="question-list-container" class="bg-stone-50 border border-stone-200 rounded-lg p-3 max-h-60 overflow-y-auto custom-scrollbar">
+              <div id="question-list" class="flex flex-col gap-2"></div>
+            </div>
 
             <div id="custom-inputs" class="space-y-4 hidden">
-            <div>
-              <label class="block text-sm font-bold text-slate-700 mb-1">Your Exam Question</label>
-              <textarea id="input-question" placeholder="Type your exam question here..." class="w-full p-3 rounded-lg bg-stone-50 border border-stone-200 text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-slate-400 focus:border-slate-400 min-h-[80px] resize-y"></textarea>
+              <div>
+                <label class="block text-sm font-bold text-slate-700 mb-1">Your Exam Question</label>
+                <textarea id="input-question" placeholder="Type your exam question here..." class="w-full p-3 rounded-lg bg-stone-50 border border-stone-200 text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-slate-400 focus:border-slate-400 min-h-[80px] resize-y"></textarea>
+              </div>
+              <div>
+                <label class="block text-sm font-bold text-slate-700 mb-1">Reference Text (Optional)</label>
+                <textarea id="input-reference" placeholder="Paste a poem, extract, or quote here..." class="w-full p-3 rounded-lg bg-stone-50 border border-stone-200 text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-slate-400 focus:border-slate-400 min-h-[120px] resize-y"></textarea>
+              </div>
             </div>
-            <div>
-              <label class="block text-sm font-bold text-slate-700 mb-1">Reference Text (Optional)</label>
-              <textarea id="input-reference" placeholder="Paste a poem, extract, or quote here..." class="w-full p-3 rounded-lg bg-stone-50 border border-stone-200 text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-slate-400 focus:border-slate-400 min-h-[120px] resize-y"></textarea>
-            </div>
+          </div>
+
+          <div id="selected-question-area" class="hidden">
+             <div class="p-4 bg-stone-50 border border-stone-200 rounded-lg shadow-inner">
+                <p id="display-selected-question" class="text-slate-900 font-semibold text-[15px] leading-relaxed"></p>
+                <div id="display-selected-reference" class="mt-3 text-sm text-slate-600 italic bg-white p-3 rounded-md border border-stone-100 hidden shadow-sm"></div>
+             </div>
           </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow-sm border border-stone-200 p-5 md:p-6">
+        <div class="bg-white rounded-lg shadow-sm border border-stone-200 p-5 md:p-6 transition-all duration-300">
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
             <h2 id="draft-title" class="text-lg font-semibold text-slate-900 flex items-center gap-2 transition-colors">
               <i data-lucide="pen-tool" class="w-5 h-5"></i>
@@ -1169,7 +1246,7 @@
         </div>
       </div>
 
-      <div class="flex flex-col md:sticky md:top-[110px] h-[600px] max-h-[calc(100vh-160px)] md:col-span-5">
+      <div class="flex flex-col md:sticky md:top-[110px] h-[600px] max-h-[calc(100vh-160px)] md:col-span-4">
         <div class="bg-white border border-stone-200 rounded-lg p-5 md:p-6 shadow-md flex-grow flex flex-col relative overflow-hidden h-full max-h-full">
           <div id="feedback-bg" class="absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl pointer-events-none transition-colors"></div>
           
