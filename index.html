@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DraftCraft | Structured Exam Writing Coach</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%239333ea'/><path d='M30 52l14 14 28-28' stroke='white' stroke-width='10' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
 
   <!-- SEO Meta Tags -->
   <meta name="description" content="DraftCraft is a structured exam writing coach helping students master paragraphs for English, History, Science, and Geography. Get instant AI tutor feedback using P.I.E., S.F.S., C.E.R., and S.E.E. frameworks.">
@@ -629,11 +630,13 @@
       state.feedback = '';
       render();
 
-      const modelsToTry = [
-        "gemini-3.8-flash",
-        "gemini-2.5-flash",
-        "gemini-1.5-flash",
-        "gemini-1.5-flash-8b"
+      // Retry gemini-3.8-flash multiple times on 503 high-demand spikes, plus 3.8-pro fallback
+      const attempts = [
+        { model: "gemini-3.8-flash", delayMs: 0 },
+        { model: "gemini-3.8-flash", delayMs: 1500 },
+        { model: "gemini-3.8-pro",   delayMs: 1000 },
+        { model: "gemini-3.8-flash", delayMs: 3000 },
+        { model: "gemini-3.8-flash", delayMs: 4500 }
       ];
 
       let success = false;
@@ -669,7 +672,16 @@
         systemInstruction: { parts: [{ text: systemPrompt }] },
       };
 
-      for (const modelName of modelsToTry) {
+      for (let i = 0; i < attempts.length; i++) {
+        const { model: modelName, delayMs } = attempts[i];
+        if (delayMs > 0) {
+          if (els.btnFeedback) {
+            els.btnFeedback.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> High traffic, retrying (${i}/${attempts.length - 1})...`;
+            lucide.createIcons();
+          }
+          await new Promise(r => setTimeout(r, delayMs));
+        }
+
         try {
           const response = await fetch(WORKER_URL, {
             method: 'POST',
@@ -681,7 +693,7 @@
 
           if (!response.ok) {
             lastApiError = result.error?.message || `HTTP ${response.status}`;
-            console.warn(`Model ${modelName} error:`, lastApiError);
+            console.warn(`Attempt ${i + 1} (${modelName}) error:`, lastApiError);
             continue;
           }
 
@@ -694,7 +706,7 @@
           }
         } catch (err) {
           lastApiError = err.message;
-          console.warn(`Model ${modelName} failed, trying next...`, err);
+          console.warn(`Attempt ${i + 1} (${modelName}) failed, trying next...`, err);
         }
       }
 
