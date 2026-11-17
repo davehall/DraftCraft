@@ -4,6 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DraftCraft - Smart Tutor</title>
+
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Master Junior Cycle exam writing for English, History, Science, and Geography with step-by-step frameworks (P.I.E., S.F.S., C.E.R., S.E.E.) and instant AI tutor feedback.">
+  <meta name="keywords" content="Junior Cycle, Irish exams, writing coach, study app, English P.I.E, Geography S.E.E, Science C.E.R, History S.F.S, exam revision">
+  <meta name="author" content="David Hall">
+
+  <!-- Open Graph / Social Sharing Meta Tags -->
+  <meta property="og:title" content="DraftCraft | Junior Cycle Exam Writing Coach">
+  <meta property="og:description" content="Build structured, top-grade exam paragraphs across English, History, Science, and Geography with instant AI feedback.">
+  <meta property="og:type" content="website">
+
+  <!-- Microsoft Clarity Analytics -->
+  <script type="text/javascript">
+      (function(c,l,a,r,i,t,y){
+          c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+          t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+          y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+      })(window, document, "clarity", "script", "zeocrqy3ew");
+  </script>
   
   <!-- Tailwind CSS for styling -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -768,10 +787,10 @@
       
       // Update Header Theme
       els.headerTitle.innerText = "DraftCraft";
-      els.headerIconContainer.className = `${conf.theme.bg} p-2.5 rounded-lg shadow-sm`;
+      els.headerIconContainer.className = `${conf.theme.bg} p-2.5 rounded-lg shadow-sm transition-colors`;
       els.headerIcon.setAttribute('data-lucide', 'pen-tool'); // Reverted to the clean pen-tool icon
       
-      els.storageInfoBanner.className = `${conf.theme.infoAlert || 'bg-stone-100 border-stone-200'} rounded-lg p-4 mb-6 text-sm flex items-start gap-3 transition-colors`;
+      els.storageInfoBanner.className = `${conf.theme.infoAlert || 'bg-stone-100 border-stone-200'} rounded-lg p-4 text-xs md:text-sm flex items-start gap-3 transition-colors shadow-sm`;
       els.storageInfoIcon.className = `w-5 h-5 ${conf.theme.iconInner} flex-shrink-0 mt-0.5 transition-colors`;
 
       // Update Labels & Placeholders
