@@ -827,7 +827,7 @@
       const iconContainerPad = state.isScrolled ? 'p-1.5' : 'p-2.5';
 
       // Update Container Layouts
-      if (els.headerContainer) els.headerContainer.className = `max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 transition-all duration-300 ${topPy}`;
+      if (els.headerContainer) els.headerContainer.className = `max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 transition-all duration-300 ${topPy}`;
       if (els.topRow) els.topRow.className = `flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-all duration-300 ${topMb}`;
 
       // Update Subject Toggles
@@ -842,7 +842,7 @@
       if (els.headerSubtitle) els.headerSubtitle.className = `text-slate-500 font-semibold transition-all duration-300 ${state.isScrolled ? 'text-[10px]' : 'text-sm'}`;
       
       els.headerIconContainer.className = `${conf.theme.bg} rounded-lg shadow-sm transition-all duration-300 ${iconContainerPad}`;
-      els.headerIconContainer.innerHTML = `<i data-lucide="pen-tool" class="${iconSize} text-white transition-all duration-300"></i>`;
+      els.headerIconContainer.innerHTML = `<i data-lucide="file-check" class="${iconSize} text-white transition-all duration-300"></i>`;
       
       // Update Button Sizes
       if (els.cycleToggles) els.cycleToggles.className = `flex items-center bg-stone-100 p-1 rounded-lg border border-stone-200 flex-shrink-0 transition-all duration-300 ${btnHeight}`;
@@ -1039,13 +1039,13 @@
 <body class="min-h-screen bg-stone-50 text-slate-800 font-sans selection:bg-purple-200">
   
   <header class="bg-white border-b border-stone-200 shadow-sm sticky top-0 z-50">
-    <div id="header-container" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 transition-all duration-300">
+    <div id="header-container" class="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 transition-all duration-300">
       
       <!-- Top Row: Brand, Cycle Toggles & Progress -->
       <div id="top-row" class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 transition-all duration-300">
         <div class="flex items-center gap-3">
           <div id="header-icon-container" class="bg-purple-600 p-2.5 rounded-lg shadow-sm transition-all duration-300">
-            <i id="header-icon" data-lucide="pen-tool" class="w-6 h-6 text-white transition-all duration-300"></i>
+            <i id="header-icon" data-lucide="file-check" class="w-6 h-6 text-white transition-all duration-300"></i>
           </div>
           <div>
             <h1 id="header-title" class="text-2xl font-black text-slate-900 tracking-tight transition-all duration-300">DraftCraft</h1>
@@ -1091,7 +1091,7 @@
     </div>
   </header>
 
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 mb-12">
+  <div class="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 mb-12">
     
     <main id="view-workspace" class="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 items-start">
       <div class="flex flex-col gap-6 md:col-span-7">
