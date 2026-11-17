@@ -36,6 +36,21 @@
     .custom-scrollbar::-webkit-scrollbar-track { background: #f5f5f4; border-radius: 4px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 4px; border: 2px solid #f5f5f4; }
     .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #a8a29e; }
+    
+    /* Compact Header on Scroll */
+    header, header > div, #header-title, #header-subtitle, #header-icon-container, #header-icon, header button, header div {
+      transition: all 0.25s ease-in-out !important;
+    }
+    header.compact > div.py-4 { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
+    header.compact .mb-4 { margin-bottom: 0.5rem !important; }
+    header.compact #header-title { font-size: 1.25rem !important; line-height: 1.25rem !important; }
+    header.compact #header-subtitle { font-size: 0 !important; opacity: 0 !important; height: 0 !important; margin: 0 !important; overflow: hidden !important; }
+    header.compact #header-icon-container { padding: 0.35rem !important; }
+    header.compact #header-icon { width: 1.25rem !important; height: 1.25rem !important; }
+    header.compact .h-\[44px\] { height: 34px !important; }
+    header.compact .px-4, header.compact .px-3\.5 { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+    header.compact .py-2 { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
+    header.compact button { font-size: 0.75rem !important; }
   </style>
 
   <script type="module">
@@ -46,6 +61,7 @@
 
     // Application State
     let state = {
+      isScrolled: false,
       activeSubject: 'english', // 'english', 'history', 'science', 'geography'
       isProgressOpen: false,
       activeCategory: 'poetry',
@@ -332,6 +348,11 @@
 
     // DOM Elements
     const els = {
+      headerContainer: document.getElementById('header-container'),
+      topRow: document.getElementById('top-row'),
+      cycleToggles: document.getElementById('cycle-toggles'),
+      btnJunior: document.getElementById('btn-junior'),
+      btnSenior: document.getElementById('btn-senior'),
       headerTitle: document.getElementById('header-title'),
       headerSubtitle: document.getElementById('header-subtitle'),
       headerIconContainer: document.getElementById('header-icon-container'),
@@ -420,6 +441,16 @@
 
     // --- Core Logic ---
     function setupEventListeners() {
+      // Scroll listener for compact header
+      window.addEventListener('scroll', () => {
+        const header = document.querySelector('header');
+        if (window.scrollY > 20) {
+          header.classList.add('compact');
+        } else {
+          header.classList.remove('compact');
+        }
+      });
+
       // Subject Switching
       els.subjEnglish.addEventListener('click', () => { 
         state.activeSubject = 'english'; 
@@ -480,6 +511,13 @@
       els.inputEvidence.addEventListener('input', (e) => { state.evidence = e.target.value; renderUIOnly(); });
       els.inputExplain.addEventListener('input', (e) => { state.explain = e.target.value; renderUIOnly(); });
       
+      window.addEventListener('scroll', () => {
+        const scrolled = window.scrollY > 30;
+        if (state.isScrolled !== scrolled) {
+          state.isScrolled = scrolled;
+          render();
+        }
+      });
       // Dynamic category buttons are set up in `render`
     }
 
@@ -779,17 +817,38 @@
     function render() {
       const conf = subjectConfig[state.activeSubject];
       
+      // Dynamic Layout based on Scroll
+      const tabPad = state.isScrolled ? 'px-3 py-1.5 text-[13px]' : 'px-4 py-2 text-sm';
+      const btnHeight = state.isScrolled ? 'h-[36px]' : 'h-[44px]';
+      const btnText = state.isScrolled ? 'text-[13px]' : 'text-sm';
+      const topPy = state.isScrolled ? 'py-2' : 'py-4';
+      const topMb = state.isScrolled ? 'mb-2' : 'mb-4';
+      const iconSize = state.isScrolled ? 'w-4 h-4' : 'w-6 h-6';
+      const iconContainerPad = state.isScrolled ? 'p-1.5' : 'p-2.5';
+
+      // Update Container Layouts
+      if (els.headerContainer) els.headerContainer.className = `max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 transition-all duration-300 ${topPy}`;
+      if (els.topRow) els.topRow.className = `flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-all duration-300 ${topMb}`;
+
       // Update Subject Toggles
-      els.subjEnglish.className = `px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${state.activeSubject === 'english' ? 'bg-white shadow-sm text-purple-700 border border-stone-200' : 'text-slate-500 hover:bg-stone-200'}`;
-      els.subjHistory.className = `px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${state.activeSubject === 'history' ? 'bg-white shadow-sm text-amber-700 border border-stone-200' : 'text-slate-500 hover:bg-stone-200'}`;
-      els.subjScience.className = `px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${state.activeSubject === 'science' ? 'bg-white shadow-sm text-blue-700 border border-stone-200' : 'text-slate-500 hover:bg-stone-200'}`;
-      els.subjGeography.className = `px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${state.activeSubject === 'geography' ? 'bg-white shadow-sm text-emerald-700 border border-stone-200' : 'text-slate-500 hover:bg-stone-200'}`;
+      els.subjEnglish.className = `${tabPad} rounded-lg font-bold transition-all whitespace-nowrap ${state.activeSubject === 'english' ? 'bg-white shadow-sm text-purple-700 border border-stone-200' : 'text-slate-500 hover:bg-stone-200'}`;
+      els.subjHistory.className = `${tabPad} rounded-lg font-bold transition-all whitespace-nowrap ${state.activeSubject === 'history' ? 'bg-white shadow-sm text-amber-700 border border-stone-200' : 'text-slate-500 hover:bg-stone-200'}`;
+      els.subjScience.className = `${tabPad} rounded-lg font-bold transition-all whitespace-nowrap ${state.activeSubject === 'science' ? 'bg-white shadow-sm text-blue-700 border border-stone-200' : 'text-slate-500 hover:bg-stone-200'}`;
+      els.subjGeography.className = `${tabPad} rounded-lg font-bold transition-all whitespace-nowrap ${state.activeSubject === 'geography' ? 'bg-white shadow-sm text-emerald-700 border border-stone-200' : 'text-slate-500 hover:bg-stone-200'}`;
       
-      // Update Header Theme
+      // Update Header Theme & Title
       els.headerTitle.innerText = "DraftCraft";
-      els.headerIconContainer.className = `${conf.theme.bg} p-2.5 rounded-lg shadow-sm transition-colors`;
-      els.headerIcon.setAttribute('data-lucide', 'pen-tool'); // Reverted to the clean pen-tool icon
+      els.headerTitle.className = `font-black text-slate-900 tracking-tight transition-all duration-300 ${state.isScrolled ? 'text-lg' : 'text-2xl'}`;
+      if (els.headerSubtitle) els.headerSubtitle.className = `text-slate-500 font-semibold transition-all duration-300 ${state.isScrolled ? 'text-[10px]' : 'text-sm'}`;
       
+      els.headerIconContainer.className = `${conf.theme.bg} rounded-lg shadow-sm transition-all duration-300 ${iconContainerPad}`;
+      els.headerIconContainer.innerHTML = `<i data-lucide="pen-tool" class="${iconSize} text-white transition-all duration-300"></i>`;
+      
+      // Update Button Sizes
+      if (els.cycleToggles) els.cycleToggles.className = `flex items-center bg-stone-100 p-1 rounded-lg border border-stone-200 flex-shrink-0 transition-all duration-300 ${btnHeight}`;
+      if (els.btnJunior) els.btnJunior.className = `px-3.5 h-full flex items-center justify-center rounded-lg font-bold transition-all bg-white shadow-sm text-slate-800 border border-stone-200 whitespace-nowrap ${btnText}`;
+      if (els.btnSenior) els.btnSenior.className = `px-3.5 h-full flex items-center justify-center rounded-lg font-bold transition-all text-slate-400 cursor-not-allowed whitespace-nowrap ${btnText}`;
+
       els.storageInfoBanner.className = `${conf.theme.infoAlert || 'bg-stone-100 border-stone-200'} rounded-lg p-4 text-xs md:text-sm flex items-start gap-3 transition-colors shadow-sm`;
       els.storageInfoIcon.className = `w-5 h-5 ${conf.theme.iconInner} flex-shrink-0 mt-0.5 transition-colors`;
 
@@ -852,7 +911,7 @@
         setTimeout(() => els.progressOverlay.classList.add('hidden'), 300); // Wait for transition
       }
       
-      els.btnProgress.className = `flex items-center justify-center gap-2 px-5 h-[44px] rounded-lg font-bold text-sm transition-all bg-white shadow-sm ${conf.theme.text} hover:bg-stone-50 border border-stone-200 whitespace-nowrap`;
+      els.btnProgress.className = `flex items-center justify-center gap-2 px-5 rounded-lg font-bold transition-all bg-white shadow-sm ${conf.theme.text} hover:bg-stone-50 border border-stone-200 whitespace-nowrap ${btnHeight} ${btnText}`;
       els.progressCount.innerText = state.progressHistory.length;
 
       // Question List
@@ -980,26 +1039,26 @@
 <body class="min-h-screen bg-stone-50 text-slate-800 font-sans selection:bg-purple-200">
   
   <header class="bg-white border-b border-stone-200 shadow-sm sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <div id="header-container" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 transition-all duration-300">
       
       <!-- Top Row: Brand, Cycle Toggles & Progress -->
-      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+      <div id="top-row" class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 transition-all duration-300">
         <div class="flex items-center gap-3">
-          <div id="header-icon-container" class="bg-purple-600 p-2.5 rounded-lg shadow-sm transition-colors">
-            <i id="header-icon" data-lucide="pen-tool" class="w-6 h-6 text-white"></i>
+          <div id="header-icon-container" class="bg-purple-600 p-2.5 rounded-lg shadow-sm transition-all duration-300">
+            <i id="header-icon" data-lucide="pen-tool" class="w-6 h-6 text-white transition-all duration-300"></i>
           </div>
           <div>
-            <h1 id="header-title" class="text-2xl font-black text-slate-900 tracking-tight transition-colors">DraftCraft</h1>
-            <p id="header-subtitle" class="text-sm text-slate-500 font-semibold transition-colors">Structured Exam Writing Coach</p>
+            <h1 id="header-title" class="text-2xl font-black text-slate-900 tracking-tight transition-all duration-300">DraftCraft</h1>
+            <p id="header-subtitle" class="text-sm text-slate-500 font-semibold transition-all duration-300">Structured Exam Writing Coach</p>
           </div>
         </div>
         
         <div class="flex flex-wrap items-center gap-3 w-full md:w-auto justify-between md:justify-end">
-          <div class="flex items-center bg-stone-100 p-1 h-[44px] rounded-lg border border-stone-200 flex-shrink-0">
-            <button class="px-3.5 h-full flex items-center justify-center rounded-lg text-sm font-bold transition-all bg-white shadow-sm text-slate-800 border border-stone-200 whitespace-nowrap">
+          <div id="cycle-toggles" class="flex items-center bg-stone-100 p-1 h-[44px] rounded-lg border border-stone-200 flex-shrink-0 transition-all duration-300">
+            <button id="btn-junior" class="px-3.5 h-full flex items-center justify-center rounded-lg text-sm font-bold transition-all bg-white shadow-sm text-slate-800 border border-stone-200 whitespace-nowrap">
               Junior Cycle
             </button>
-            <button class="px-3.5 h-full flex items-center justify-center rounded-lg text-sm font-bold transition-all text-slate-400 cursor-not-allowed whitespace-nowrap" disabled title="Coming Soon">
+            <button id="btn-senior" class="px-3.5 h-full flex items-center justify-center rounded-lg text-sm font-bold transition-all text-slate-400 cursor-not-allowed whitespace-nowrap" disabled title="Coming Soon">
               Senior Cycle
             </button>
           </div>
@@ -1054,7 +1113,7 @@
             <div id="question-list" class="flex flex-col gap-2"></div>
           </div>
 
-          <div id="custom-inputs" class="space-y-4 hidden">
+            <div id="custom-inputs" class="space-y-4 hidden">
             <div>
               <label class="block text-sm font-bold text-slate-700 mb-1">Your Exam Question</label>
               <textarea id="input-question" placeholder="Type your exam question here..." class="w-full p-3 rounded-lg bg-stone-50 border border-stone-200 text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-slate-400 focus:border-slate-400 min-h-[80px] resize-y"></textarea>
@@ -1110,7 +1169,7 @@
         </div>
       </div>
 
-      <div class="flex flex-col md:sticky md:top-[140px] h-[600px] max-h-[calc(100vh-160px)] md:col-span-5">
+      <div class="flex flex-col md:sticky md:top-[110px] h-[600px] max-h-[calc(100vh-160px)] md:col-span-5">
         <div class="bg-white border border-stone-200 rounded-lg p-5 md:p-6 shadow-md flex-grow flex flex-col relative overflow-hidden h-full max-h-full">
           <div id="feedback-bg" class="absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl pointer-events-none transition-colors"></div>
           
