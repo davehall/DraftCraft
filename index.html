@@ -1136,6 +1136,13 @@
             `;
             
             btn.onclick = () => { 
+              if (state.question !== q) {
+                state.point = '';
+                state.evidence = '';
+                state.explain = '';
+                state.feedback = '';
+                state.error = '';
+              }
               state.question = q; 
               state.isQuestionExpanded = false; 
               render(); 
