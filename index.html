@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DraftCraft | Structured Exam Writing Coach</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%239333ea'/><path d='M30 52l14 14 28-28' stroke='white' stroke-width='10' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
 
   <!-- SEO Meta Tags -->
   <meta name="description" content="DraftCraft is a structured exam writing coach helping students master paragraphs for English, History, Science, and Geography. Get instant AI tutor feedback using P.I.E., S.F.S., C.E.R., and S.E.E. frameworks.">
@@ -15,6 +14,9 @@
   <meta property="og:title" content="DraftCraft | Structured Exam Writing Coach">
   <meta property="og:description" content="Master exam writing across English, History, Science, and Geography with step-by-step frameworks and instant AI tutor feedback. Ideal for Junior Cycle, GCSE, and exam revision.">
   <meta property="og:type" content="website">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239333ea' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'></path><polyline points='14 2 14 8 20 8'></polyline><polyline points='9 15 11 17 15 13'></polyline></svg>">
 
   <!-- Microsoft Clarity Analytics -->
   <script type="text/javascript">
@@ -56,13 +58,15 @@
 
   <script type="module">
     // ==========================================
-    // 🔒 YOUR CLOUDFLARE WORKER URL GOES HERE
+    // 🔑 API CONFIGURATION
+    // Paste your Gemini API Key below (or leave blank to use the Cloudflare Worker fallback)
     // ==========================================
+    const API_KEY = "YOUR_API_KEY_HERE"; 
     const WORKER_URL = "https://little-river-d328.daibhi-hall.workers.dev"; 
 
     // Application State
     let state = {
-      activeSubject: 'english', // 'english', 'history', 'science', 'geography'
+      activeSubject: 'english',
       isProgressOpen: false,
       activeCategory: 'poetry',
       isQuestionExpanded: true,
@@ -76,12 +80,13 @@
       isLoading: false,
       error: '',
       progressHistory: [],
-      // Unique storage key based on browser session / user ID to keep users completely separate
+      questionBatches: {},
       storageKey: 'junior_cycle_tutor_progress_' + (localStorage.getItem('user_uuid') || (() => {
         const id = 'user_' + Math.random().toString(36).substr(2, 9);
         localStorage.setItem('user_uuid', id);
         return id;
-      })())
+      })()),
+      batchesKey: 'junior_cycle_tutor_batches_v2'
     };
 
     // Subject Configurations
@@ -92,7 +97,8 @@
         icon: "book-open",
         theme: {
           bg: "bg-purple-600", text: "text-purple-700", border: "border-purple-200", bgLight: "bg-purple-50",
-          shadow: "shadow-purple-200", hover: "hover:bg-purple-700", iconInner: "text-purple-600", badge: "bg-purple-50 text-purple-700 border-purple-200"
+          shadow: "shadow-purple-200", hover: "hover:bg-purple-700", iconInner: "text-purple-600", badge: "bg-purple-50 text-purple-700 border-purple-200",
+          infoAlert: "bg-purple-50 border-purple-200 text-purple-900"
         },
         categories: [
           { id: 'poetry', label: 'Poetry' },
@@ -111,14 +117,14 @@
           e: "This is where you get the marks! Explain HOW the quote proves your point. Talk about the writer's language and the effect on the reader."
         },
         systemRole: "Junior Cycle English tutor in Ireland",
-        focusInstruction: "Use **bold text** to highlight key literary terms (e.g., imagery, tone, metaphor) or important advice. Focus on the writer's craft and effect on the reader.",
+        focusInstruction: "Use **bold text** to highlight key literary terms (e.g., imagery, tone, metaphor, enjambment, symbolism) or important advice. Focus on the writer's craft, personal response, and effect on the reader.",
         example: {
           ref: `Mid-Term Break by Seamus Heaney\n\nI sat all morning in the college sick bay\nCounting bells knelling classes to a close.\nAt two o'clock our neighbours drove me home.\n\n... (extract) ...\n\nHe lay in the four-foot box as in his cot.\nNo gaudy scars, the bumper knocked him clear.\n\nA four-foot box, a foot for every year.`,
-          q: `How does the poet Seamus Heaney convey a sense of tragedy and sadness in "Mid-Term Break"? Support your answer with reference to the poem.`,
+          q: `Choose a poem you have studied that tells a personal story. Outline what happens and explain what the poem reveals to you about people. Support your response with quotation.`,
           cat: 'poetry',
-          p: `Seamus Heaney conveys a heartbreaking sense of tragedy by showing how young and innocent his little brother was when he died.`,
-          i: `At the very end of the poem, he writes: "A four-foot box, a foot for every year."`,
-          e: `This quote is incredibly sad because it reveals the child was only four years old. The short, blunt description of the coffin shocks the reader. It makes us feel deep sympathy for the family because a young life was cut short so soon.`
+          p: `In "Mid-Term Break", Seamus Heaney tells the heartbreaking personal story of returning home from boarding school after his young brother died, revealing how differently people cope with grief.`,
+          i: `At the very end of the poem, Heaney describes his brother's coffin with the line: "A four-foot box, a foot for every year."`,
+          e: `This stark image is deeply moving because it reveals the child was only four years old. The contrast between the grown men crying earlier in the poem and the quiet, blunt final line shows that grief can leave people numb and in shock.`
         }
       },
       history: {
@@ -150,11 +156,11 @@
         focusInstruction: "Use **bold text** to highlight key historical terms, dates, or significant concepts. Focus heavily on historical accuracy, cause-and-effect, and use of concrete facts over vague statements.",
         example: {
           ref: ``,
-          q: `Explain the impact of the printing press during the Renaissance.`,
+          q: `Explain three ways in which the invention of the printing press changed life in Europe during the Renaissance.`,
           cat: 'events',
-          p: `The invention of the printing press by Johannes Gutenberg in 1440 was a turning point in the Renaissance, as it allowed ideas to spread rapidly across Europe.`,
-          i: `Before the printing press, books were copied by hand by monks, making them rare and expensive. Gutenberg's press used movable type, which meant books could be produced cheaply and in large numbers.`,
-          e: `This was highly significant because it broke the Catholic Church's monopoly on knowledge. More people learned to read, and new Renaissance ideas about science, art, and religion spread quickly, leading to major movements like the Reformation.`
+          p: `The invention of the movable-type printing press by Johannes Gutenberg around 1450 revolutionised Europe by making books cheap and allowing new ideas to spread rapidly.`,
+          i: `Before the printing press, monks copied manuscripts by hand onto parchment, making books rare and expensive. Gutenberg's press printed the 42-line Bible in Mainz, Germany, and within fifty years millions of books were printed in vernacular languages across Europe.`,
+          e: `This was historically significant because it broke the Catholic Church's monopoly on education, increased literacy rates, and enabled Martin Luther's 95 Theses to spread rapidly during the Reformation.`
         }
       },
       science: {
@@ -186,11 +192,11 @@
         focusInstruction: "Use **bold text** to highlight key scientific terms, theories, or data. Focus heavily on scientific accuracy and logical reasoning.",
         example: {
           ref: ``,
-          q: `Explain how the particles in a solid behave compared to a gas.`,
-          cat: 'chemistry',
-          p: `Particles in a solid are tightly packed in a fixed pattern and can only vibrate, whereas gas particles are spread far apart and move freely.`,
-          i: `When observing ice (a solid), it holds its own shape and cannot be easily compressed. When water boils into steam (a gas), it expands to fill the entire container.`,
-          e: `This happens because the attractive forces between particles in a solid are very strong, holding them in place. In a gas, the particles have so much heat energy that they overcome these forces and move rapidly in all directions.`
+          q: `Explain why people who have a digestive disorder that flattens the villi in their small intestine may become under-nourished.`,
+          cat: 'biology',
+          p: `People with flattened villi in their small intestine become under-nourished because their digestive system has a much smaller surface area to absorb nutrients into the blood.`,
+          i: `In a healthy small intestine, millions of tiny finger-like projections called villi fold the inner wall, whereas in disorders like coeliac disease, the wall becomes flat and smooth.`,
+          e: `A high surface area is essential for digested food molecules like glucose and amino acids to diffuse rapidly into the bloodstream. Without villi, fewer nutrients are absorbed, leaving the body's cells without enough energy and building materials.`
         }
       },
       geography: {
@@ -222,201 +228,251 @@
         focusInstruction: "Use **bold text** to highlight key geographical terms and locations. Focus heavily on ensuring the student is building clear Significant Relevant Points (SRPs).",
         example: {
           ref: ``,
-          q: `Explain how a waterfall is formed by river erosion.`,
+          q: `Name one feature of glacial erosion and explain how it was formed.`,
           cat: 'physical',
-          p: `A waterfall forms in the upper course of a river where a layer of hard rock lies on top of a layer of soft rock.`,
-          i: `The river water falls over the hard rock and erodes the softer rock underneath much faster through processes like hydraulic action and abrasion. This creates an overhang of hard rock, which eventually collapses, causing the waterfall to retreat upstream over time and form a steep gorge.`,
-          e: `A clear example of this is the Powerscourt Waterfall on the River Dargle in County Wicklow.`
+          p: `A U-shaped valley is a steep-sided, flat-bottomed valley formed by the processes of glacial erosion as a glacier moves down a river valley.`,
+          i: `During an ice age, a massive glacier fills an existing V-shaped river valley. Through plucking (where ice freezes onto rock and rips it out) and abrasion (where trapped rocks scrape the valley floor like sandpaper), the glacier deepens and widens the valley into a U-shape.`,
+          e: `A famous Irish example of a U-shaped valley is Glendalough in County Wicklow.`
         }
       }
     };
 
-    // Question Banks
+    // Authentic SEC Junior Cycle Question Banks (Extracted from 2022, 2023, 2024 & 2025 Past Papers & Marking Schemes)
     const questionBanks = {
       english: {
         poetry: [
-          "Choose a poem you have studied that you found interesting. Explain what made it interesting for you. Support your answer with reference to the poem.",
-          "Identify a poem you have studied in which the poet uses language effectively to create a powerful atmosphere. Discuss your answer with reference to the text.",
-          "Select a poem you have studied that deals with an important issue or theme. How does the poet explore this issue? Support your points with quotation.",
-          "Choose a poem you have studied which features a memorable person or character. Explain why this person is memorable, using quotes from the poem.",
-          "From your study of poetry, select a poem that explores the theme of youth or growing up. Discuss how this theme is presented by the poet.",
-          "Choose a poem you have studied that creates a strong sense of place or nature. Explain how the poet achieves this, supporting your answer with reference to the poem.",
-          "Select a poem you have studied that left a lasting impression on you because of its ending. Explain why the ending was effective, referring to the text."
+          "Choose a poem you have studied that tells a personal story. Outline what happens and explain what the poem reveals to you about people. Support your response with quotation.",
+          "Select a poem you have studied as part of your course. Outline how this poem gave you a broader understanding of the world, supporting your answer with reference to the poem.",
+          "Identify how Tone, Enjambment (run-on lines), or Symbolism is used in a poem you have studied. Explain how the use of this technique impacted your understanding of the poem.",
+          "Do you think that poets offer readers hope through their poetry? Explain your views with reference to a poem you have studied, referring to both ideas and use of language.",
+          "In your view, does the poet use imagery effectively to tell a personal story in a poem you have studied? Explain your answer using suitable quotation from the poem.",
+          "Give an example of a memorable metaphor or simile used by a poet that you encountered in your study of Junior Cycle English. Explain why this metaphor or simile was memorable for you.",
+          "Would you recommend a poem you have studied for inclusion in a poetry book for Junior Cycle English? Refer to both what the poem says and how it uses language.",
+          "Choose a poem you have studied where the speaker is reflecting on their life or wishing for a different time. Which part of their reflection do you find most interesting? Explain your choice.",
+          "Choose a poem you have studied that uses vivid imagery. Identify two images that appealed to you the most and explain your choices with reference to the poem.",
+          "Select a poem you have studied that had a long-lasting effect on your thoughts and feelings. Explain how the poet's language created this lasting effect.",
+          "Choose a poem you have studied that deals with a difficult experience or hurt. How does the poet use language to capture this emotion?",
+          "Select a poem you have studied where nature or a specific setting plays a central role. Explain how the poet brings this setting to life through their choice of words."
         ],
         drama: [
-          "Choose a Shakespearean play you have studied. Select a scene that you found highly dramatic or tense. Explain how the playwright created this drama.",
-          "Identify a character from a play you have studied who you feel is treated unfairly. Discuss why you think they are treated unfairly, supporting your answer with reference to the text.",
-          "From a play you have studied, choose a moment where a character makes a difficult decision. Explain the reasons for their decision and its consequences.",
-          "Choose a relationship between two characters in a play you have studied. How does this relationship change or develop as the play progresses?",
-          "Select a play you have studied. Discuss how a central theme (such as justice, revenge, or loyalty) is explored by the playwright.",
-          "Choose a villain or antagonist from a play you have studied. Explain what makes this character effective on stage, supporting your answer with reference to the play.",
-          "Select the opening scene of a play you have studied. Explain how the playwright captures the audience's attention right from the start."
+          "Plays are often most enjoyable because of their moments of suspense. Select a specific moment of suspense from a Shakespearean play you have studied. Describe this moment and explain why it has a sense of suspense.",
+          "Reflect on the resolution (ending) of a Shakespearean play you have studied. What is the moral or lesson an audience might learn from the resolution? Support your answer with reference to the text.",
+          "Choose a central character from a play or film you have studied. Explain how your perspective (opinion) of this character developed as you studied the text, referring to their key decisions, dialogue, or interactions.",
+          "With reference to at least two key moments from a play you have studied, explain how the play had a long-lasting effect on your thoughts and feelings.",
+          "You have been asked to give a talk about 'The Art of Good Storytelling'. Discuss how a Shakespearean play you have studied demonstrates the art of good storytelling.",
+          "Choose a character from a play or film you have studied where the odds are stacked against them. Explain how the writer gives the audience a reason to root for this character.",
+          "Audiences often admire characters for trying more than for their successes. Choose a character from a play or film you have studied and explain how this applies to them.",
+          "Passive characters can be boring to an audience. Choose a character from a play you have studied who has strong opinions and real emotions, and explain how this makes them engaging.",
+          "Imagine you are the director of a film or play you have studied. Discuss how specific camera shots (such as a close-up, extreme wide shot, or upshot) or stage directions could enhance a key moment for the audience.",
+          "With reference to one or more key moments from a film or play you have studied, explain how the director or playwright uses striking visual images to make the moment engaging.",
+          "Portraying supernatural or dramatic elements on stage is challenging for theatre directors. Describe a dramatic scene from a play you have studied and explain how it could be staged effectively for a modern audience.",
+          "Come up with an analysis of the ending for a central character in a play you have studied. Explain how the ending affects the audience's ultimate view of that character."
         ],
         novel: [
-          "Choose a novel you have studied. Describe a key moment in the plot that changes the course of the story, supporting your answer with reference to the text.",
-          "Select a character from a novel you have studied who faces a difficult challenge. Explain how the character deals with this challenge.",
-          "Identify a setting or place in a novel you have studied that is vividly described. How does the author bring this setting to life?",
-          "Choose a novel you have studied that has a powerful ending. Did you find the ending satisfying? Explain your answer with reference to the novel.",
-          "From your study of a novel, select a character you admired or strongly disliked. Explain the reasons for your feelings, referring to the text.",
-          "Choose a novel you have studied where friendship or family plays an important role. Discuss how this theme is shown through key moments in the story.",
-          "Select a novel you have studied in which a character learns an important lesson or changes significantly. Explain what causes this change."
+          "Choosing a central character from a novel you have studied, explain how your perspective (opinion) of this character developed over the course of the text. Refer to their decisions, dialogue, or interactions.",
+          "Using a novel or short story that you have studied, outline how the setting has a vital influence on a character's actions.",
+          "With reference to at least two key moments from a novel you have studied, explain how the novel had a long-lasting effect on your thoughts and feelings.",
+          "You have been asked to give a talk to young readers about 'The Art of Good Storytelling'. Discuss how a novel you have studied demonstrates the art of good storytelling.",
+          "To what extent do you think the author of a novel you have studied succeeds in writing an ending with a sense of hope? Support your answer with reference to the text.",
+          "Choose a character from a novel you have studied who faces stacked odds. Explain how the author gives the reader a reason to root for this character.",
+          "Choose a character from a novel you have studied who shows real emotions in a difficult situation. Explain how this lends credibility to the story.",
+          "One popular shape for a story is 'Man in a Hole', where the main character gets into trouble, gets out of it, and ends up better off for the experience. Explain how a novel you have studied fits this structure.",
+          "Discuss how the ending of a novel you have studied affects the reader's ultimate view of the main character.",
+          "Choose a character from a novel you have studied whom the reader admires more for trying than for their successes. Support your answer with reference to the text.",
+          "Select a key moment from a novel you have studied where a character is relieved of a great burden or makes a life-changing promise. Explain why this moment is effective.",
+          "Identify a character in a novel you have studied who is presented as either a hero or a villain in the opening chapters. Explain how the author establishes this impression."
         ]
       },
       history: {
         people: [
-          "Select a named person from history you have studied. Describe their contribution to a key historical event.",
-          "Choose a leader involved in a major 20th-century conflict. Discuss their actions and impact.",
-          "Write about the life and work of a key figure during the Renaissance or Reformation.",
-          "Select a revolutionary leader from Irish or European history (e.g., Wolfe Tone, Michael Collins, or George Washington). Explain their main aims and impact.",
-          "Choose a scientist, inventor, or explorer you have studied. Explain how their discoveries changed the world.",
-          "Select a ruler or political leader from Ancient Rome or Medieval Europe. Discuss how they gained and kept power."
+          "Write an account of the religious reformer you studied (e.g. Martin Luther). Include their religious beliefs, main actions, and the changes they introduced.",
+          "Write about one named Renaissance figure of your choice. Include details about specific works or inventions by this person and how they changed art, science, or literature.",
+          "Write an account of a leader involved in the parliamentary tradition in Irish politics (e.g. Daniel O'Connell, Charles Stewart Parnell, or John Redmond). Include their campaigns, role, and successes or failures.",
+          "Write an account of a conquistador you studied (e.g. Hernán Cortés or Francisco Pizarro) and the civilisation he conquered, including his aims, tactics, and impact.",
+          "Name one person involved in a revolution in Europe or the wider world (such as the American or French Revolution) and describe their role and impact.",
+          "Describe the key changes in the experience and political achievements of women in Irish society during the twentieth century (e.g. Countess Markievicz, Mary Robinson, or changes in work and education).",
+          "Name a personality from the 1960s in Irish, European, or world history. Explain how this person shows that the 1960s was a decade of significant change.",
+          "Name two leaders who signed the 1916 Proclamation of Independence and describe their role and the consequences of the 1916 Easter Rising.",
+          "Explain how Christopher Columbus is remembered from different historical perspectives, and discuss the impact of European colonisation on indigenous populations after 1492.",
+          "Name a fascist leader you studied (e.g. Adolf Hitler or Benito Mussolini) and explain how fascism affected political life, youth groups, and terror in that country."
         ],
         events: [
-          "Choose a major historical event you have studied. Explain the main causes of this event.",
-          "Describe the consequences of a major revolution or rebellion you have studied.",
-          "Explain the impact of the Industrial Revolution on living and working conditions.",
-          "Discuss the causes and impact of the Great Famine in Ireland during the 1840s.",
-          "Explain how life changed for ordinary people during World War II (or The Emergency in Ireland).",
-          "Describe the key events and significance of the 1916 Easter Rising or the Irish War of Independence.",
-          "Explain the main causes and consequences of the Cold War or the fall of the Berlin Wall."
+          "Explain the main causes and consequences of the Great Famine in Ireland in the 1840s, including the impact of potato blight, eviction, and emigration.",
+          "Explain three ways in which the invention of the printing press changed life in Europe during the Renaissance and Reformation.",
+          "Name the Plantation in Ireland that you studied and the monarch who ordered it. Describe two ways in which this plantation contributed to long-term change in Ireland.",
+          "What were the main causes of World War I or World War II, and in what ways did the war affect the lives of ordinary people in a named country or in Ireland?",
+          "Apart from Jewish people, name other groups targeted for persecution by the Nazis and explain how key policies (such as the Nuremberg Laws, Kristallnacht, and ghettos) were used during the Holocaust.",
+          "What circumstances contributed to the outbreak of the Troubles in Northern Ireland in the late 1960s, and why is a key event from this period (1968–1998) considered historically important?",
+          "Name a pre-twentieth century Irish rebellion you studied (such as the 1798 Rebellion). Explain the 'physical force tradition' and the impact of this rebellion on Ireland.",
+          "Name one person, issue, or event linked to the Cold War (e.g. the Berlin Blockade, Cuban Missile Crisis, or Iron Curtain) and explain how it contributed to tension between the superpowers.",
+          "Name a sporting, cultural, or social movement you studied (such as the GAA or Gaelic League) and explain how it impacted Irish life at a local or national level.",
+          "Name a technological development or innovation you studied (in agriculture, industry, or transport) and explain whether it made people's lives better or worse."
         ],
         sources: [
-          "Explain the difference between primary and secondary sources, giving one example of each.",
-          "Why is it important for historians to check sources for bias? Support your answer with an example.",
-          "Describe the work of an archaeologist and how they help uncover the past.",
-          "Explain how historians use census records, newspapers, or diaries to learn about life in the past.",
-          "Discuss the strengths and limitations of using photographs or propaganda posters as historical evidence.",
-          "Explain how methods such as stratigraphy and carbon dating help archaeologists date artefacts."
+          "Name and explain two different methods used by archaeologists to date items found during excavations (such as stratigraphy, carbon-14 dating, or dendrochronology).",
+          "Explain what is meant by the term 'propaganda' and discuss how historians evaluate posters, political cartoons, or newspapers for bias.",
+          "Why are archives (such as the National Archives of Ireland) important for historians, and how do archivists conserve and protect original primary source documents?",
+          "Why were emigrant letters important for Irish families in the 1800s, and why are they valuable primary sources for historians studying the Irish diaspora today?",
+          "Explain the difference between a primary source and a secondary source, and the difference between a biography and an autobiography, giving historical examples.",
+          "How do census records (such as the 1911 and 1926 Irish censuses) help historians learn about population changes, housing conditions, and family life in the past?",
+          "Give the name and location of a historic site or building you studied (such as an Early Christian monastery like Monasterboice or Clonmacnoise) and explain why it is historically significant.",
+          "Why is it important that eyewitness testimonies from Holocaust survivors (such as Tomi Reichental) are recorded and studied by future generations?",
+          "Identify two different primary sources a historian could use to research a local sporting or cultural movement, and explain how each source would help their research.",
+          "Explain what information an archaeologist can learn from artefacts and DNA analysis of human remains uncovered at excavation sites like Vindolanda or medieval round houses."
         ]
       },
       science: {
         biology: [
-          "Explain the process of photosynthesis and why it is important for life on Earth.",
-          "Describe the function of the human heart and how it pumps blood around the body.",
-          "Discuss the differences between plant and animal cells.",
-          "Explain how the human digestive system breaks down food and absorbs nutrients.",
-          "Describe the role of microorganisms (bacteria and fungi) in ecosystems and human health.",
-          "Explain how energy flows through a food chain and why energy is lost at each trophic level.",
-          "Discuss how human activities can positively or negatively affect biodiversity in an ecosystem."
+          "Using your knowledge of surface area, explain why people who have a digestive disorder that flattens the villi in their small intestine may become under-nourished.",
+          "Describe the relationship between photosynthesis in the chloroplast and respiration in the mitochondrion, including the gases and energy involved.",
+          "Describe the processes of physical and chemical digestion, absorption, and respiration that happen from when a person eats bread to when their cells use the carbohydrate for energy.",
+          "Explain why the rate of respiration in a plant remains relatively constant over 24 hours, whereas the rate of photosynthesis changes between day and night.",
+          "Explain why the air we breathe in contains more oxygen than the air we breathe out, while the amount of nitrogen remains the same.",
+          "Using a laboratory bell-jar model of the human breathing system, explain what happens to the lungs when the diaphragm is pulled down, and describe one limitation of this model.",
+          "Suggest a scientific reason why food chains in an ecosystem rarely have more than four trophic (feeding) levels, referring to energy transfer and heat loss.",
+          "Describe how human activities and global warming threaten biodiversity, and explain two ways humans can conserve ecological biodiversity.",
+          "Explain why scientists use multiple seeds or quadrats (e.g. five quadrats instead of one) and keep variables constant to ensure a fair test during an ecological or plant growth investigation.",
+          "Describe one positive role and one negative role that micro-organisms (such as bacteria, fungi, or yeast) play in human health and ecosystems."
         ],
         chemistry: [
-          "Explain the difference between an element, a compound, and a mixture.",
-          "Describe the properties of the three states of matter (solid, liquid, gas).",
-          "What happens during a chemical reaction? Provide one example.",
-          "Explain how you would separate a mixture of salt, sand, and water in the laboratory.",
-          "Describe the difference between acids and bases, and explain how the pH scale is used to identify them.",
-          "Explain how temperature and surface area affect the rate of a chemical reaction.",
-          "Describe the structure of an atom, including the location and charge of protons, neutrons, and electrons."
+          "Using the collision theory of particles, explain why using smaller marble chips (larger total surface area) or a higher temperature increases the rate of a chemical reaction.",
+          "Explain what happens to the kinetic energy and spacing of particles when a solid is heated through melting and boiling, and explain why these are physical, endothermic changes.",
+          "Compare the properties of metals (such as aluminium) and non-metals (such as sulfur), referring to electrical conductivity, malleability, and melting points.",
+          "Explain how an acid and a base react in a neutralisation reaction (such as treating an acidic insect sting with sodium bicarbonate) and how pH indicators or probes track this change.",
+          "Explain the difference between accuracy and precision when students measure the volume of carbon dioxide gas collected in a laboratory experiment.",
+          "Describe how carbon moves between Earth's reservoirs in the carbon cycle through processes like photosynthesis, respiration, decomposition, combustion, and dissolving.",
+          "Describe two environmental concerns associated with an increase in greenhouse gases like carbon dioxide in Earth's atmosphere from burning fossil fuels.",
+          "Compare the densities and solubility of oil, water, and sand, and explain how filtration can be used to separate an insoluble solid from a liquid.",
+          "Using Niels Bohr's 'planetary model' of the atom, compare the charge and location of protons, neutrons, and electrons.",
+          "Describe how you would produce a common gas (such as carbon dioxide or oxygen) in the laboratory, and explain how you would test the gas to confirm its identity."
         ],
         physics: [
-          "Explain the concept of energy conservation and give a real-world example.",
-          "Describe how forces affect the motion of an object.",
-          "Explain the difference between renewable and non-renewable energy sources.",
-          "Describe the difference between series and parallel electrical circuits, including one advantage of parallel circuits.",
-          "Explain how heat is transferred by conduction, convection, and radiation.",
-          "Describe the relationship between speed, distance, and time, using an everyday example.",
-          "Explain how light is reflected and refracted when it hits different surfaces."
+          "Compare a series circuit and a parallel circuit containing three light bulbs. Explain what happens to the remaining bulbs and voltage if one bulb blows in each circuit.",
+          "Explain the relationship between current, voltage, and resistance (Ohm's Law) in a resistor versus a thermistor as temperature increases.",
+          "Describe the forces acting on a rollercoaster car or a thrown football (such as weight, tension, lift, and friction/air resistance) and explain how potential energy converts to kinetic energy.",
+          "Explain why the hills on a rollercoaster decrease in height from the start of the track to the finish point, referring to energy dissipation and friction.",
+          "Explain how a total solar eclipse and a total lunar eclipse occur, and why total eclipses do not happen every single month when the Moon orbits the Earth.",
+          "Outline two scientific or environmental reasons why it is difficult for humans to travel to and explore Mars themselves compared to using robotic rovers.",
+          "Discuss a technological application of physics (such as nuclear energy or atomic clocks), explaining its impact on science, society, and the environment.",
+          "Explain the ethical and environmental issues energy producers face when extracting non-renewable fossil fuels versus using renewable energy sources like wind, solar, and hydro.",
+          "Using the concepts of electrical power and energy efficiency (Sankey diagrams), explain how an electric appliance converts electrical energy into useful heat energy and wasted sound/light energy.",
+          "Explain how Earth's axial tilt causes seasonal changes in sunlight intensity and carbon dioxide uptake by plants in the northern and southern hemispheres."
         ]
       },
       geography: {
         physical: [
-          "Explain one process of coastal erosion and name a landform created by it.",
-          "Describe how a volcano is formed, referencing tectonic plate boundaries.",
-          "Explain the formation of a V-shaped valley in a river's upper course.",
-          "Explain how earthquakes occur at plate boundaries and describe one way their impact can be reduced.",
-          "Describe the formation of a meander and an ox-bow lake in the middle or lower course of a river.",
-          "Explain how limestone landscapes (karst) are formed through carbonation, naming one Irish example.",
-          "Describe the processes of erosion and deposition involved in glaciation, naming one glacial landform."
+          "Explain how an earthquake occurs at a plate boundary, referring to the focus, epicentre, fault line, and shock waves.",
+          "Name and explain one economic impact and one social impact of an earthquake or volcanic eruption at a named location you have studied (e.g. Turkey-Syria or Iceland).",
+          "Name one feature of glacial erosion or glacial deposition (e.g. U-shaped valley, corrie, drumlin, or esker) and explain how it was formed.",
+          "Explain how the processes of river erosion (hydraulic action, abrasion) or river deposition change the shape of the landscape to form features like meanders, waterfalls, or deltas.",
+          "Explain how limestone rock in a karst landscape (such as the Burren) is weathered by the chemical process of carbonation to form surface and underground features.",
+          "Explain why mechanical weathering (such as freeze-thaw action) is more likely to occur on high mountain peaks than in low-lying sheltered valleys.",
+          "Explain how one factor (Climate, Vegetation, or Parent Material) influences soil formation, and describe one impact of soil erosion caused by human activity.",
+          "Explain why fast mass movement (such as a landslide or bogburst) is more likely to occur on steep slopes following heavy rainfall or coastal undercutting.",
+          "Discuss one reason why glaciers around the world are melting at a rapid speed due to climate change and the greenhouse effect.",
+          "Explain how Ireland's Cool Temperate Oceanic climate is influenced by latitude, prevailing south-westerly winds, aspect, and altitude."
         ],
         human: [
-          "Discuss two pull factors that encourage people to migrate to a city.",
-          "Explain the impact of rapid population growth on a developing country.",
-          "Describe one problem caused by traffic congestion in urban areas.",
-          "Explain two push factors that cause people to leave rural areas in Ireland or abroad.",
-          "Discuss how a city's land use changes from the Central Business District (CBD) to the suburbs.",
-          "Explain the causes and consequences of forced migration (refugees) in the modern world."
+          "Explain two reasons why more people are living in urban areas than rural areas (urbanisation), referring to push and pull factors.",
+          "Name one town or city in Ireland that you have studied (e.g. Dublin) and explain one major urban problem found there, such as traffic congestion or urban sprawl.",
+          "Explain two factors that impact birth rates and life expectancy in a developed country compared to a developing country, referring to population pyramids.",
+          "Explain how improving access to healthcare and vaccinations can benefit young people and change population growth in the developing world.",
+          "Explain one cause of forced migration (such as war or significant weather events in Syria) and one barrier or challenge that a migrant or asylum seeker might face.",
+          "When people migrate to live in a new place, it impacts both the donor region and the host region. Explain one positive or negative impact of migration.",
+          "Explain why linear, nucleated, or dispersed rural settlement patterns develop in specific landscapes, referring to roads, relief, and access to services.",
+          "Explain one way that globalisation or multinational companies (MNCs) have impacted settlement and employment patterns in Ireland.",
+          "Discuss one example you have studied where people try to control natural processes (such as coastal sea walls, rock armour, or hydroelectric dams) and its impact on the local community.",
+          "Explain how water supplies (such as reservoirs, lakes, and rivers) can become polluted by human activities like agriculture, industry, or sewage."
         ],
         economic: [
-          "Explain the difference between primary, secondary, and tertiary economic activities.",
-          "Discuss the environmental impacts of a specific primary economic activity.",
-          "Explain the importance of tourism to the Irish economy.",
-          "Explain the factors that influence the location of a factory (secondary economic activity).",
-          "Discuss the causes and impacts of climate change on global agriculture or coastal communities.",
-          "Explain how renewable energy sources can help reduce Ireland's reliance on fossil fuels."
+          "Briefly explain one reason why deforestation is still happening in places like the Amazon Rainforest, and describe its impact on the global climate.",
+          "Explain what is meant by overfishing, and describe two ways governments can make fishing more sustainable (such as quotas and exclusion zones).",
+          "Name one location in Ireland where rocks or peat bogs are exploited (e.g. quarrying or Bord na Móna bogs) and explain one economic and one environmental impact.",
+          "Discuss the positive and negative impacts of building a new hydroelectric power (HEP) dam and reservoir on the surrounding local area.",
+          "Explain two reasons why a specific site (such as an exposed upland area near roads and the national grid) is suitable for building a renewable wind farm.",
+          "A large multinational company plans to build a supermarket or factory on the edge of an Irish town. Explain one positive economic impact and one negative impact on the town centre.",
+          "Compare the percentage of people employed in Primary, Secondary, and Tertiary economic activities in a developed country versus a developing country.",
+          "Discuss how the physical geography and climate of an area (such as beaches in Greece, Alpine ski resorts, or the Burren) help to attract tourists.",
+          "Explain one way that high numbers of tourists can have a negative environmental impact on areas they visit (such as footpath erosion in the Dublin Mountains) and how it can be managed.",
+          "Explain why Ireland is closing its peat-burning power stations and transitioning from finite fossil fuels to renewable energy sources."
         ]
       }
     };
 
     // DOM Elements
-    const els = {
-      header: document.querySelector('header'),
-      headerTitle: document.getElementById('header-title'),
-      headerSubtitle: document.getElementById('header-subtitle'),
-      headerIconContainer: document.getElementById('header-icon-container'),
-      headerIcon: document.getElementById('header-icon'),
-      
-      subjEnglish: document.getElementById('subj-english'),
-      subjHistory: document.getElementById('subj-history'),
-      subjScience: document.getElementById('subj-science'),
-      subjGeography: document.getElementById('subj-geography'),
-      
-      storageInfoBanner: document.getElementById('storage-info-banner'),
-      storageInfoIcon: document.getElementById('storage-info-icon'),
-      
-      btnProgress: document.getElementById('tab-progress'),
-      btnCloseProgress: document.getElementById('btn-close-progress'),
-      progressOverlay: document.getElementById('progress-overlay'),
-      progressCount: document.getElementById('progress-count'),
-      btnClear: document.getElementById('btn-clear'),
-      btnExample: document.getElementById('btn-example'),
-      btnCopyReport: document.getElementById('btn-copy-report'),
-      btnDownloadReport: document.getElementById('btn-download-report'),
-      copyToast: document.getElementById('copy-toast'),
-      btnClearHistory: document.getElementById('btn-clear-history'),
-      clearHistoryConfirm: document.getElementById('clear-history-confirm'),
-      btnConfirmClearYes: document.getElementById('btn-confirm-clear-yes'),
-      btnConfirmClearNo: document.getElementById('btn-confirm-clear-no'),
-      
-      viewWorkspace: document.getElementById('view-workspace'),
-      viewProgress: document.getElementById('view-progress'),
-      
-      categoryWrapper: document.getElementById('category-wrapper'),
-      questionListContainer: document.getElementById('question-list-container'),
-      questionList: document.getElementById('question-list'),
-      selectedQuestionBanner: document.getElementById('selected-question-banner'),
-      selectedQuestionText: document.getElementById('selected-question-text'),
-      btnChangeQuestion: document.getElementById('btn-change-question'),
-      customInputs: document.getElementById('custom-inputs'),
-      inputQuestion: document.getElementById('input-question'),
-      inputReference: document.getElementById('input-reference'),
-      
-      draftTitle: document.getElementById('draft-title'),
-      labelP: document.getElementById('label-p'),
-      labelI: document.getElementById('label-p2'), // I or F
-      labelE: document.getElementById('label-e'),  // E or S
-      inputPoint: document.getElementById('input-point'),
-      inputEvidence: document.getElementById('input-evidence'),
-      inputExplain: document.getElementById('input-explain'),
-      countPoint: document.getElementById('count-point'),
-      countEvidence: document.getElementById('count-evidence'),
-      countExplain: document.getElementById('count-explain'),
-      
-      btnFeedback: document.getElementById('btn-feedback'),
-      feedbackBg: document.getElementById('feedback-bg'),
-      errorMessage: document.getElementById('error-message'),
-      feedbackEmpty: document.getElementById('feedback-empty'),
-      feedbackLoading: document.getElementById('feedback-loading'),
-      feedbackContent: document.getElementById('feedback-content'),
-      
-      progressEmpty: document.getElementById('progress-empty'),
-      progressGrid: document.getElementById('progress-grid'),
-      btnStartAnswer: document.getElementById('btn-start-answer')
-    };
+    let els = {};
 
-    // --- Initialization ---
-    async function init() {
+    function init() {
+      els = {
+        header: document.querySelector('header'),
+        headerTitle: document.getElementById('header-title'),
+        headerSubtitle: document.getElementById('header-subtitle'),
+        headerIconContainer: document.getElementById('header-icon-container'),
+        headerIcon: document.getElementById('header-icon'),
+        
+        subjEnglish: document.getElementById('subj-english'),
+        subjHistory: document.getElementById('subj-history'),
+        subjScience: document.getElementById('subj-science'),
+        subjGeography: document.getElementById('subj-geography'),
+        
+        storageInfoBanner: document.getElementById('storage-info-banner'),
+        storageInfoIcon: document.getElementById('storage-info-icon'),
+        
+        btnProgress: document.getElementById('tab-progress'),
+        btnCloseProgress: document.getElementById('btn-close-progress'),
+        progressOverlay: document.getElementById('progress-overlay'),
+        progressCount: document.getElementById('progress-count'),
+        btnClear: document.getElementById('btn-clear'),
+        btnExample: document.getElementById('btn-example'),
+        btnCopyReport: document.getElementById('btn-copy-report'),
+        btnDownloadReport: document.getElementById('btn-download-report'),
+        copyToast: document.getElementById('copy-toast'),
+        btnClearHistory: document.getElementById('btn-clear-history'),
+        clearHistoryConfirm: document.getElementById('clear-history-confirm'),
+        btnConfirmClearYes: document.getElementById('btn-confirm-clear-yes'),
+        btnConfirmClearNo: document.getElementById('btn-confirm-clear-no'),
+        
+        viewWorkspace: document.getElementById('view-workspace'),
+        viewProgress: document.getElementById('view-progress'),
+        
+        questionSectionCard: document.getElementById('question-section-card'),
+        questionSectionTitle: document.getElementById('question-section-title'),
+        btnShuffleBatch: document.getElementById('btn-shuffle-batch'),
+        categoryWrapper: document.getElementById('category-wrapper'),
+        questionListContainer: document.getElementById('question-list-container'),
+        questionList: document.getElementById('question-list'),
+        selectedQuestionBanner: document.getElementById('selected-question-banner'),
+        selectedQuestionText: document.getElementById('selected-question-text'),
+        btnChangeQuestion: document.getElementById('btn-change-question'),
+        customInputs: document.getElementById('custom-inputs'),
+        inputQuestion: document.getElementById('input-question'),
+        inputReference: document.getElementById('input-reference'),
+        
+        draftTitle: document.getElementById('draft-title'),
+        labelP: document.getElementById('label-p'),
+        labelI: document.getElementById('label-p2'),
+        labelE: document.getElementById('label-e'),
+        inputPoint: document.getElementById('input-point'),
+        inputEvidence: document.getElementById('input-evidence'),
+        inputExplain: document.getElementById('input-explain'),
+        countPoint: document.getElementById('count-point'),
+        countEvidence: document.getElementById('count-evidence'),
+        countExplain: document.getElementById('count-explain'),
+        
+        btnFeedback: document.getElementById('btn-feedback'),
+        errorMessage: document.getElementById('error-message'),
+        feedbackEmpty: document.getElementById('feedback-empty'),
+        feedbackLoading: document.getElementById('feedback-loading'),
+        feedbackContent: document.getElementById('feedback-content'),
+        
+        progressEmpty: document.getElementById('progress-empty'),
+        progressGrid: document.getElementById('progress-grid'),
+        btnStartAnswer: document.getElementById('btn-start-answer')
+      };
+
       setupEventListeners();
       loadHistoryFromStorage();
+      loadBatchesFromStorage();
       render();
     }
 
@@ -439,9 +495,84 @@
       }
     }
 
-    // --- Core Logic ---
+    function loadBatchesFromStorage() {
+      try {
+        const saved = localStorage.getItem(state.batchesKey);
+        if (saved) {
+          state.questionBatches = JSON.parse(saved);
+        }
+      } catch (e) {
+        console.warn("Could not load question batches", e);
+      }
+    }
+
+    function saveBatchesToStorage() {
+      try {
+        localStorage.setItem(state.batchesKey, JSON.stringify(state.questionBatches));
+      } catch (e) {
+        console.warn("Could not save question batches", e);
+      }
+    }
+
+    // Check if a question has already been answered in progressHistory
+    function isQuestionAnswered(qText) {
+      if (!qText) return false;
+      const norm = qText.trim().toLowerCase();
+      return state.progressHistory.some(entry => (entry.question || '').trim().toLowerCase() === norm);
+    }
+
+    // Shuffle helper
+    function shuffleArray(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    // Get or generate the current 5-question batch for a subject + category
+    // Answered questions are immediately removed and replaced by fresh unanswered ones.
+    // Answered questions only appear at the bottom once unanswered ones run out.
+    function getOrGenerateBatch(subj, cat, forceNew = false) {
+      const key = `${subj}_${cat}`;
+      const allQuestions = (questionBanks[subj] && questionBanks[subj][cat]) ? questionBanks[subj][cat] : [];
+      if (allQuestions.length === 0) return [];
+
+      const unansweredPool = allQuestions.filter(q => !isQuestionAnswered(q));
+      const answeredPool = allQuestions.filter(q => isQuestionAnswered(q));
+
+      let currentBatch = state.questionBatches[key];
+
+      if (!Array.isArray(currentBatch) || forceNew) {
+        currentBatch = [];
+      } else {
+        // Remove answered questions from the current view so fresh ones cycle in
+        currentBatch = currentBatch.filter(q => !isQuestionAnswered(q) && allQuestions.includes(q));
+      }
+
+      // Fill up to 5 with unanswered questions
+      if (currentBatch.length < 5 && unansweredPool.length > currentBatch.length) {
+        const availableUnanswered = unansweredPool.filter(q => !currentBatch.includes(q));
+        const needed = 5 - currentBatch.length;
+        const newAdditions = shuffleArray(availableUnanswered).slice(0, needed);
+        currentBatch = [...currentBatch, ...newAdditions];
+      }
+
+      // If we STILL have less than 5 (because we've answered almost all of them),
+      // pad the bottom with answered questions so they only appear at the end
+      if (currentBatch.length < 5) {
+        const needed = 5 - currentBatch.length;
+        const filler = shuffleArray(answeredPool).slice(0, needed);
+        currentBatch = [...currentBatch, ...filler];
+      }
+
+      state.questionBatches[key] = currentBatch;
+      saveBatchesToStorage();
+      return currentBatch;
+    }
+
     function setupEventListeners() {
-      // Compact Header Scroll Listener
       window.addEventListener('scroll', () => {
         if (els.header) {
           if (window.scrollY > 30) {
@@ -452,27 +583,10 @@
         }
       }, { passive: true });
 
-      // Subject Switching
-      if (els.subjEnglish) els.subjEnglish.addEventListener('click', () => { 
-        state.activeSubject = 'english'; 
-        state.activeCategory = 'poetry';
-        handleClear();
-      });
-      if (els.subjHistory) els.subjHistory.addEventListener('click', () => { 
-        state.activeSubject = 'history'; 
-        state.activeCategory = 'events';
-        handleClear();
-      });
-      if (els.subjScience) els.subjScience.addEventListener('click', () => { 
-        state.activeSubject = 'science'; 
-        state.activeCategory = 'biology';
-        handleClear();
-      });
-      if (els.subjGeography) els.subjGeography.addEventListener('click', () => { 
-        state.activeSubject = 'geography'; 
-        state.activeCategory = 'physical';
-        handleClear();
-      });
+      if (els.subjEnglish) els.subjEnglish.addEventListener('click', () => { state.activeSubject = 'english'; state.activeCategory = 'poetry'; handleClear(); });
+      if (els.subjHistory) els.subjHistory.addEventListener('click', () => { state.activeSubject = 'history'; state.activeCategory = 'people'; handleClear(); });
+      if (els.subjScience) els.subjScience.addEventListener('click', () => { state.activeSubject = 'science'; state.activeCategory = 'biology'; handleClear(); });
+      if (els.subjGeography) els.subjGeography.addEventListener('click', () => { state.activeSubject = 'geography'; state.activeCategory = 'physical'; handleClear(); });
       
       if (els.btnProgress) els.btnProgress.addEventListener('click', () => { state.isProgressOpen = true; render(); });
       if (els.btnCloseProgress) els.btnCloseProgress.addEventListener('click', () => { state.isProgressOpen = false; render(); });
@@ -482,6 +596,11 @@
       if (els.btnClear) els.btnClear.addEventListener('click', handleClear);
       if (els.btnExample) els.btnExample.addEventListener('click', handleExample);
       if (els.btnChangeQuestion) els.btnChangeQuestion.addEventListener('click', () => {
+        state.isQuestionExpanded = true;
+        render();
+      });
+      if (els.btnShuffleBatch) els.btnShuffleBatch.addEventListener('click', () => {
+        getOrGenerateBatch(state.activeSubject, state.activeCategory, true);
         state.isQuestionExpanded = true;
         render();
       });
@@ -523,7 +642,6 @@
 
     function generateReportText() {
       if (state.progressHistory.length === 0) return '';
-      
       let report = `DRAFTCRAFT - PROGRESS REPORT\n`;
       report += `Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\n`;
       report += `Total Completed Answers: ${state.progressHistory.length}\n`;
@@ -531,9 +649,7 @@
 
       state.progressHistory.forEach((entry, index) => {
         const num = state.progressHistory.length - index;
-        const subj = entry.subject || 'english';
-        const conf = subjectConfig[subj];
-        
+        const conf = subjectConfig[entry.subject || 'english'];
         report += `ANSWER #${num} (${conf.title.toUpperCase()} - ${entry.category.toUpperCase()}) - ${new Date(entry.timestamp).toLocaleDateString()}\n`;
         report += `QUESTION: ${entry.question}\n\n`;
         report += `[${conf.labels.p.charAt(0)}] ${conf.labels.p.toUpperCase()}:\n${entry.point || '(None)'}\n\n`;
@@ -542,21 +658,18 @@
         report += `--- TUTOR FEEDBACK ---\n${entry.feedback.replace(/\*\*/g, '')}\n`;
         report += `==================================================\n\n`;
       });
-
       return report;
     }
 
     function handleCopyReport() {
       const report = generateReportText();
       if (!report) return;
-
       const textArea = document.createElement('textarea');
       textArea.value = report;
       textArea.style.position = 'fixed';
       textArea.style.left = '-9999px';
       document.body.appendChild(textArea);
       textArea.select();
-      
       try {
         document.execCommand('copy');
         els.copyToast.classList.remove('hidden');
@@ -570,7 +683,6 @@
     function handleDownloadReport() {
       const report = generateReportText();
       if (!report) return;
-
       const blob = new Blob([report], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -609,9 +721,54 @@
       render();
     }
 
+    // Automatically discover valid models for direct API key usage
+    async function getAvailableModels(key) {
+      const defaultModels = [
+        "gemini-3.5-flash-lite",
+        "gemini-3.5-flash",
+        "gemini-3.8-flash-lite",
+        "gemini-3.8-flash",
+        "gemini-flash-lite-latest",
+        "gemini-flash-latest"
+      ];
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+        if (!res.ok) return defaultModels;
+        const data = await res.json();
+        if (!data.models) return defaultModels;
+
+        const valid = data.models
+          .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"))
+          .map(m => m.name.replace("models/", ""))
+          .filter(name => !name.includes("tts") && !name.includes("image") && !name.includes("vision") && !name.includes("embedding") && !name.includes("aqa") && !name.includes("audio") && !name.includes("robotics") && !name.includes("computer-use") && !name.includes("2.0") && !name.includes("1.5") && !name.includes("2.5"));
+
+        valid.sort((a, b) => {
+          const score = (n) => {
+            if (n.includes("3.5-flash-lite")) return 1;
+            if (n.includes("3.8-flash-lite")) return 2;
+            if (n.includes("flash-lite")) return 3;
+            if (n.includes("3.5-flash")) return 4;
+            if (n.includes("3.8-flash")) return 5;
+            if (n.includes("flash")) return 6;
+            if (n.includes("gemma-3")) return 7;
+            if (n.includes("pro")) return 8;
+            return 9;
+          };
+          return score(a) - score(b);
+        });
+
+        return valid.length > 0 ? valid : defaultModels;
+      } catch (e) {
+        return defaultModels;
+      }
+    }
+
     async function handleGetFeedback() {
-      if (!WORKER_URL || WORKER_URL.includes("yourname.workers.dev")) {
-        state.error = "Worker URL is missing! Please paste your Cloudflare Worker URL at the top of index.html.";
+      const hasDirectKey = API_KEY && API_KEY !== "YOUR_API_KEY_HERE" && API_KEY.trim() !== "";
+      const hasWorker = WORKER_URL && !WORKER_URL.includes("yourname.workers.dev");
+
+      if (!hasDirectKey && !hasWorker) {
+        state.error = "API Key is missing! Please add your Gemini API Key at the top of index.html.";
         render();
         return;
       }
@@ -630,27 +787,12 @@
       state.feedback = '';
       render();
 
-      // Retry gemini-3.8-flash multiple times on 503 high-demand spikes, plus 3.8-pro fallback
-      const attempts = [
-        { model: "gemini-3.8-flash", delayMs: 0 },
-        { model: "gemini-3.8-flash", delayMs: 1500 },
-        { model: "gemini-3.8-pro",   delayMs: 1000 },
-        { model: "gemini-3.8-flash", delayMs: 3000 },
-        { model: "gemini-3.8-flash", delayMs: 4500 }
-      ];
-
-      let success = false;
-      let generatedFeedback = '';
-      let lastApiError = '';
-
       const systemPrompt = `You are an expert, highly encouraging ${conf.systemRole}. The student is practicing exam questions. 
         
         CRITICAL INSTRUCTION FOR READABILITY (Dyslexia-friendly):
         - Write in extremely short, simple sentences (maximum 15 words per sentence).
         - NEVER write dense paragraphs. Every single idea must be a separate bullet point.
         - ${conf.focusInstruction}
-        
-        PEDAGOGICAL GOAL: Provide detailed, meaningful, and actionable feedback to improve their grade. Push them to analyze deeper. Use sophisticated but accessible vocabulary.
         
         Review their draft based on the reference text and question. Structure your feedback EXACTLY with these exact text headings (do not use markdown asterisks for these headings):
         
@@ -663,56 +805,74 @@
         - [Clearly explain *what* they should add to their answer and *why* it will get them more marks.]
         
         Example Upgrade:
-        - [Provide a short example of how a top-grade student might expand on their '${conf.labels.e}' section to show deeper understanding. Give them the exact vocabulary to use.]`;
+        - [Provide a short example of how a top-grade student might expand on their '${conf.labels.e}' section to show deeper understanding.]`;
 
       const userPrompt = `Reference Text:\n${state.referenceText || "None provided"}\n\nExam Question:\n${state.question}\n\nStudent's Draft:\n${fullDraft}`;
 
-      const payload = {
-        contents: [{ parts: [{ text: userPrompt }] }],
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-      };
+      let success = false;
+      let generatedFeedback = '';
+      let lastApiError = '';
 
-      for (let i = 0; i < attempts.length; i++) {
-        const { model: modelName, delayMs } = attempts[i];
-        if (delayMs > 0) {
-          if (els.btnFeedback) {
-            els.btnFeedback.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> High traffic, retrying (${i}/${attempts.length - 1})...`;
-            lucide.createIcons();
-          }
-          await new Promise(r => setTimeout(r, delayMs));
-        }
+      const modelsToTry = hasDirectKey
+        ? await getAvailableModels(API_KEY)
+        : [
+            "gemini-3.5-flash-lite",
+            "gemini-3.5-flash",
+            "gemini-3.8-flash-lite",
+            "gemini-flash-lite-latest",
+            "gemini-3.8-flash",
+            "gemini-flash-latest"
+          ];
+
+      for (let i = 0; i < modelsToTry.length; i++) {
+        const modelName = modelsToTry[i];
+        const isGemma = modelName.includes("gemma");
+
+        const payload = isGemma
+          ? { contents: [{ parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }] }
+          : { contents: [{ parts: [{ text: userPrompt }] }], systemInstruction: { parts: [{ text: systemPrompt }] } };
 
         try {
-          const response = await fetch(WORKER_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: modelName, payload })
-          });
+          const response = hasDirectKey
+            ? await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              })
+            : await fetch(WORKER_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: modelName, payload })
+              });
 
           const result = await response.json();
 
           if (!response.ok) {
-            lastApiError = result.error?.message || `HTTP ${response.status}`;
-            console.warn(`Attempt ${i + 1} (${modelName}) error:`, lastApiError);
+            const errMsg = result.error?.message || `HTTP ${response.status}`;
+            console.warn(`Model ${modelName} error:`, errMsg);
+            if (response.status !== 404 || !lastApiError) {
+              lastApiError = errMsg;
+            }
+            if (response.status === 503 || response.status === 429) {
+              await new Promise(r => setTimeout(r, 1200));
+            }
             continue;
           }
 
           const candidate = result.candidates?.[0];
-
           if (candidate && candidate.content?.parts?.[0]?.text) {
             generatedFeedback = candidate.content.parts[0].text;
             success = true;
             break;
           }
         } catch (err) {
-          lastApiError = err.message;
-          console.warn(`Attempt ${i + 1} (${modelName}) failed, trying next...`, err);
+          console.warn(`Attempt (${modelName}) network error:`, err);
+          if (!lastApiError) lastApiError = err.message;
         }
       }
 
       if (success) {
         state.feedback = generatedFeedback;
-        
         const newEntry = {
           id: Date.now().toString(),
           subject: state.activeSubject,
@@ -725,11 +885,15 @@
           category: state.activeCategory,
           timestamp: Date.now(),
         };
-
         state.progressHistory.unshift(newEntry);
         saveHistoryToStorage();
+
+        // Refresh the batch in the background so the completed question is swapped out for a fresh one
+        if (state.activeCategory !== 'custom') {
+          getOrGenerateBatch(state.activeSubject, state.activeCategory, false);
+        }
       } else {
-        state.error = `Tutor couldn't connect (${lastApiError || 'Service busy'}). Please check your Cloudflare Worker and try again.`;
+        state.error = `Tutor couldn't connect (${lastApiError || 'Service busy'}). Please try again.`;
       }
 
       state.isLoading = false;
@@ -807,11 +971,11 @@
     }
 
     function renderUIOnly() {
-      els.inputQuestion.value = state.question;
-      els.inputReference.value = state.referenceText;
-      els.inputPoint.value = state.point;
-      els.inputEvidence.value = state.evidence;
-      els.inputExplain.value = state.explain;
+      if (els.inputQuestion) els.inputQuestion.value = state.question;
+      if (els.inputReference) els.inputReference.value = state.referenceText;
+      if (els.inputPoint) els.inputPoint.value = state.point;
+      if (els.inputEvidence) els.inputEvidence.value = state.evidence;
+      if (els.inputExplain) els.inputExplain.value = state.explain;
       
       updateWordCount(els.countPoint, state.point, 15);
       updateWordCount(els.countEvidence, state.evidence, 10);
@@ -819,6 +983,7 @@
     }
 
     function updateWordCount(el, text, min) {
+      if (!el) return;
       const count = countWords(text);
       el.innerText = `${count} / ${min} words min`;
       if (count >= min) {
@@ -829,6 +994,7 @@
     }
 
     function render() {
+      if (!els.headerTitle) return;
       const conf = subjectConfig[state.activeSubject];
       
       // Update Subject Toggles
@@ -837,19 +1003,17 @@
       els.subjScience.className = `px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${state.activeSubject === 'science' ? 'bg-white shadow-sm text-blue-700 border border-stone-200' : 'text-slate-500 hover:bg-stone-200'}`;
       els.subjGeography.className = `px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${state.activeSubject === 'geography' ? 'bg-white shadow-sm text-emerald-700 border border-stone-200' : 'text-slate-500 hover:bg-stone-200'}`;
       
-      // Update Header Theme
       els.headerTitle.innerText = "DraftCraft";
       els.headerIconContainer.className = `${conf.theme.bg} p-2 rounded-lg shadow-sm transition-colors`;
       els.headerIcon.setAttribute('data-lucide', 'file-check');
       
       if (els.storageInfoBanner) {
-        els.storageInfoBanner.className = `${conf.theme.infoAlert || 'bg-stone-100 border-stone-200'} rounded-lg p-4 mb-6 text-sm flex items-start gap-3 transition-colors`;
+        els.storageInfoBanner.className = `${conf.theme.infoAlert || 'bg-stone-100 border-stone-200'} rounded-lg p-4 text-xs md:text-sm flex items-start gap-3 transition-colors shadow-sm`;
       }
       if (els.storageInfoIcon) {
         els.storageInfoIcon.className = `w-5 h-5 ${conf.theme.iconInner} flex-shrink-0 mt-0.5 transition-colors`;
       }
 
-      // Update Labels & Placeholders (Generous heights for comfortable focus)
       els.draftTitle.innerHTML = `<i data-lucide="pen-tool" class="w-5 h-5 ${conf.theme.iconInner}"></i> ${conf.draftTitle}`;
       
       els.labelP.innerText = conf.labels.p;
@@ -873,14 +1037,14 @@
         const btn = document.createElement('button');
         const isActive = state.activeCategory === cat.id && !state.showRef;
         const isCustomAndActive = cat.id === 'custom' && (state.activeCategory === 'custom' || state.showRef);
-        
+
         if (isActive || isCustomAndActive) {
-          btn.className = `px-4 py-2 rounded-lg text-sm font-bold capitalize transition-all ${conf.theme.bg} text-white shadow-md`;
+          btn.className = `px-4 py-2 rounded-lg text-sm font-bold capitalize transition-all ${conf.theme.bg} text-white shadow-md flex items-center gap-1.5`;
         } else {
-          btn.className = `px-4 py-2 rounded-lg text-sm font-bold capitalize transition-all bg-stone-100 text-slate-600 hover:bg-stone-200`;
+          btn.className = `px-4 py-2 rounded-lg text-sm font-bold capitalize transition-all bg-stone-100 text-slate-600 hover:bg-stone-200 flex items-center gap-1.5`;
         }
-        
-        btn.innerText = cat.label;
+
+        btn.innerHTML = `<span>${cat.label}</span>`;
         btn.onclick = () => {
           state.activeCategory = cat.id;
           state.showRef = cat.id === 'custom';
@@ -890,15 +1054,12 @@
         els.categoryWrapper.appendChild(btn);
       });
 
-      // Update Feedback Button & Bg
-      els.feedbackBg.className = `absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl pointer-events-none transition-colors ${conf.theme.bgLight}`;
       els.btnFeedback.disabled = state.isLoading;
-      els.btnFeedback.className = `w-full flex justify-center items-center gap-2 px-4 py-3 rounded-lg font-bold text-lg transition-all ${state.isLoading ? 'bg-stone-300 text-stone-600 cursor-not-allowed' : `${conf.theme.bg} ${conf.theme.hover} text-white shadow-md ${conf.theme.shadow} hover:-translate-y-0.5`}`;
+      els.btnFeedback.className = `w-full flex justify-center items-center gap-2 px-4 py-3 rounded-lg font-bold text-lg transition-all ${state.isLoading ? 'bg-stone-300 text-stone-600 cursor-not-allowed' : `${conf.theme.bg} ${conf.theme.hover} text-white hover:-translate-y-0.5`}`;
       els.btnFeedback.innerHTML = state.isLoading ? '<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Analyzing Draft...' : '<i data-lucide="send" class="w-5 h-5"></i> Get Feedback';
 
       renderUIOnly();
 
-      // View Switching (Slide-out panel)
       if (state.isProgressOpen) {
         els.viewProgress.classList.remove('translate-x-full');
         els.progressOverlay.classList.remove('hidden');
@@ -912,42 +1073,66 @@
       els.btnProgress.className = `flex items-center justify-center gap-2 px-5 h-[44px] rounded-lg font-bold text-sm transition-all bg-white shadow-sm ${conf.theme.text} hover:bg-stone-50 border border-stone-200 whitespace-nowrap`;
       els.progressCount.innerText = state.progressHistory.length;
 
-      // Question List vs Compact Focus Banner
+      // Question List (5-Question Random Batch) vs Compact Focus Banner
       if (state.activeCategory !== 'custom' && !state.showRef) {
         els.customInputs.classList.add('hidden');
-        
+        const currentBatch = getOrGenerateBatch(state.activeSubject, state.activeCategory, false);
+
         if (state.question && !state.isQuestionExpanded) {
-          // Focus Mode: Show clean compact question banner
+          // Focus Mode: Hide category wrapper, shuffle button, and question list; show ONLY active banner
+          els.categoryWrapper.classList.add('hidden');
           els.questionListContainer.classList.add('hidden');
+          if (els.btnShuffleBatch) els.btnShuffleBatch.classList.add('hidden');
           els.selectedQuestionBanner.classList.remove('hidden');
-          els.selectedQuestionBanner.className = `p-4 rounded-xl border-2 ${conf.theme.bgLight} ${conf.theme.border} flex items-start justify-between gap-4 shadow-sm`;
-          els.selectedQuestionText.innerText = state.question;
+          const answeredActive = isQuestionAnswered(state.question);
+          els.selectedQuestionBanner.className = `p-4 rounded-xl border-2 ${answeredActive ? 'bg-emerald-50/70 border-emerald-200' : `${conf.theme.bgLight} ${conf.theme.border}`} flex items-start justify-between gap-4 shadow-sm`;
+          els.selectedQuestionText.innerHTML = answeredActive
+            ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 mr-2 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800"><i data-lucide="check-circle-2" class="w-3 h-3"></i> Completed</span>${state.question}`
+            : state.question;
         } else {
-          // Selection Mode: Show scrollable list of questions
+          // Selection Mode: Show category wrapper, shuffle button, and 5-question batch list
+          els.categoryWrapper.classList.remove('hidden');
           els.selectedQuestionBanner.classList.add('hidden');
           els.questionListContainer.classList.remove('hidden');
+
+          if (els.btnShuffleBatch) {
+            els.btnShuffleBatch.classList.remove('hidden');
+          }
+
           els.questionList.innerHTML = '';
           
-          const questions = questionBanks[state.activeSubject][state.activeCategory] || [];
-          questions.forEach((q, idx) => {
+          currentBatch.forEach((q, idx) => {
             const isSelected = state.question === q;
+            const isDone = isQuestionAnswered(q);
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = `group w-full text-left p-3.5 rounded-xl text-sm transition-all border-2 flex items-start gap-3 cursor-pointer ${
-              isSelected
-                ? `${conf.theme.bgLight} ${conf.theme.border} shadow-sm font-semibold text-slate-900`
-                : 'bg-white border-stone-200/80 text-slate-700 hover:border-stone-300 hover:bg-stone-50/90 hover:shadow-sm'
-            }`;
+
+            if (isDone) {
+              btn.className = `group w-full text-left p-3.5 rounded-xl text-sm transition-all border-2 flex items-start gap-3 cursor-pointer ${
+                isSelected
+                  ? 'bg-emerald-50 border-emerald-300 shadow-sm font-semibold text-slate-800'
+                  : 'bg-emerald-50/40 border-emerald-200/70 text-slate-500 hover:bg-emerald-50/80'
+              }`;
+            } else {
+              btn.className = `group w-full text-left p-3.5 rounded-xl text-sm transition-all border-2 flex items-start gap-3 cursor-pointer ${
+                isSelected
+                  ? `${conf.theme.bgLight} ${conf.theme.border} shadow-sm font-semibold text-slate-900`
+                  : 'bg-white border-stone-200/80 text-slate-700 hover:border-stone-300 hover:bg-stone-50/90 hover:shadow-sm'
+              }`;
+            }
             
             btn.innerHTML = `
               <span class="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center transition-colors border-2 ${
-                isSelected
-                  ? `${conf.theme.bg} border-transparent text-white`
-                  : 'border-stone-300 bg-white group-hover:border-slate-400'
+                isDone
+                  ? 'bg-emerald-600 border-transparent text-white'
+                  : isSelected
+                    ? `${conf.theme.bg} border-transparent text-white`
+                    : 'border-stone-300 bg-white group-hover:border-slate-400'
               }">
-                ${isSelected ? '<i data-lucide="check" class="w-3 h-3 stroke-[3]"></i>' : `<span class="text-[10px] font-bold text-slate-400 group-hover:text-slate-600">${idx + 1}</span>`}
+                ${(isDone || isSelected) ? '<i data-lucide="check" class="w-3 h-3 stroke-[3]"></i>' : `<span class="text-[10px] font-bold text-slate-400 group-hover:text-slate-600">${idx + 1}</span>`}
               </span>
-              <span class="leading-snug flex-grow">${q}</span>
+              <span class="leading-snug flex-grow ${isDone && !isSelected ? 'line-through decoration-emerald-400/60' : ''}">${q}</span>
+              ${isDone ? '<span class="flex-shrink-0 px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wider rounded-full">Done ✓</span>' : ''}
             `;
             
             btn.onclick = () => { 
@@ -959,12 +1144,13 @@
           });
         }
       } else {
+        els.categoryWrapper.classList.remove('hidden');
+        if (els.btnShuffleBatch) els.btnShuffleBatch.classList.add('hidden');
         els.selectedQuestionBanner.classList.add('hidden');
         els.questionListContainer.classList.add('hidden');
         els.customInputs.classList.remove('hidden');
       }
 
-      // Errors and Feedback Content
       if (state.error) {
         els.errorMessage.classList.remove('hidden');
         els.errorMessage.innerText = state.error;
@@ -982,7 +1168,6 @@
         els.feedbackContent.innerHTML = '';
       }
 
-      // Progress History Render
       els.progressEmpty.classList.toggle('hidden', state.progressHistory.length > 0);
       els.progressGrid.classList.toggle('hidden', state.progressHistory.length === 0);
       
@@ -1002,9 +1187,7 @@
       
       els.progressGrid.innerHTML = '';
       state.progressHistory.forEach(entry => {
-        const entrySubj = entry.subject || 'english';
-        const entryConf = subjectConfig[entrySubj];
-        
+        const entryConf = subjectConfig[entry.subject || 'english'];
         const card = document.createElement('div');
         card.className = "bg-white rounded-lg shadow-sm border border-stone-200 p-5 flex flex-col hover:shadow-md transition-shadow";
         card.innerHTML = `
@@ -1026,9 +1209,8 @@
           </button>
         `;
         
-        const btn = card.querySelector('.review-btn');
-        btn.onclick = () => {
-          state.activeSubject = entrySubj;
+        card.querySelector('.review-btn').onclick = () => {
+          state.activeSubject = entry.subject || 'english';
           state.question = entry.question;
           state.referenceText = entry.referenceText || '';
           state.showRef = !!entry.referenceText;
@@ -1041,7 +1223,6 @@
           state.isProgressOpen = false;
           render();
         };
-
         els.progressGrid.appendChild(card);
       });
 
@@ -1055,8 +1236,6 @@
   
   <header class="bg-white border-b border-stone-200 shadow-sm sticky top-0 z-50">
     <div class="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
-      
-      <!-- Top Row: Brand, Cycle Toggles & Progress -->
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
         <div class="flex items-center gap-2.5">
           <div id="header-icon-container" class="bg-purple-600 p-2 rounded-lg shadow-sm transition-colors">
@@ -1085,46 +1264,40 @@
         </div>
       </div>
 
-      <!-- Bottom Row: Subject Toggles -->
       <div class="flex items-center gap-3 overflow-x-auto custom-scrollbar pb-1">
         <div class="flex bg-stone-100 p-1 rounded-lg border border-stone-200 flex-shrink-0">
-          <button id="subj-english" class="px-4 py-2 rounded-lg text-sm font-bold transition-all bg-white shadow-sm text-purple-700 border border-stone-200 whitespace-nowrap">
-            English
-          </button>
-          <button id="subj-history" class="px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-500 hover:bg-stone-200 whitespace-nowrap">
-            History
-          </button>
-          <button id="subj-science" class="px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-500 hover:bg-stone-200 whitespace-nowrap">
-            Science
-          </button>
-          <button id="subj-geography" class="px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-500 hover:bg-stone-200 whitespace-nowrap">
-            Geography
-          </button>
+          <button id="subj-english" class="px-4 py-2 rounded-lg text-sm font-bold transition-all bg-white shadow-sm text-purple-700 border border-stone-200 whitespace-nowrap">English</button>
+          <button id="subj-history" class="px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-500 hover:bg-stone-200 whitespace-nowrap">History</button>
+          <button id="subj-science" class="px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-500 hover:bg-stone-200 whitespace-nowrap">Science</button>
+          <button id="subj-geography" class="px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-500 hover:bg-stone-200 whitespace-nowrap">Geography</button>
         </div>
       </div>
-
     </div>
   </header>
 
   <div class="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 mb-12 flex-grow">
-    
-    <main id="view-workspace" class="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 items-start">
-      <div class="md:col-span-8 flex flex-col gap-6">
+    <main id="view-workspace" class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+      
+      <!-- Left Column (Wider: 8 cols) -->
+      <div class="lg:col-span-8 flex flex-col gap-6">
         
-        <div class="bg-white rounded-lg shadow-sm border border-stone-200 p-5 md:p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
+        <div id="question-section-card" class="bg-white rounded-lg shadow-sm border border-stone-200 p-5 md:p-6">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <h2 id="question-section-title" class="text-lg font-semibold text-slate-900 flex items-center gap-2">
               <i data-lucide="file-text" class="w-5 h-5 text-slate-400"></i>
               1. Choose a Question
             </h2>
-            <span class="text-[10px] uppercase tracking-wider font-bold text-slate-400 bg-stone-100 px-2 py-1 rounded-lg">Click to select</span>
+            <div class="flex items-center gap-2">
+              <button id="btn-shuffle-batch" type="button" class="px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-slate-700 text-xs font-bold rounded-lg border border-stone-200 transition-colors flex items-center gap-1.5" title="Get 5 different questions">
+                <i data-lucide="shuffle" class="w-3.5 h-3.5"></i> New Set of 5
+              </button>
+            </div>
           </div>
           
-          <div id="category-wrapper" class="flex flex-wrap gap-2 mb-4">
-            <!-- Buttons dynamically generated -->
-          </div>
+          <!-- Category Chips -->
+          <div id="category-wrapper" class="flex flex-wrap gap-2 mb-4"></div>
 
-          <!-- Selected Question Banner (Focus Mode) -->
+          <!-- Selected Question Banner (Focus Mode - Hides chips when active) -->
           <div id="selected-question-banner" class="hidden">
             <div class="flex-grow">
               <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">Active Question</span>
@@ -1135,7 +1308,7 @@
             </button>
           </div>
 
-          <div id="question-list-container" class="bg-stone-50 border border-stone-200 rounded-lg p-3 max-h-60 overflow-y-auto custom-scrollbar">
+          <div id="question-list-container" class="bg-stone-50 border border-stone-200 rounded-lg p-3 max-h-80 overflow-y-auto custom-scrollbar">
             <div id="question-list" class="flex flex-col gap-2"></div>
           </div>
 
@@ -1195,9 +1368,9 @@
         </div>
       </div>
 
-      <div class="md:col-span-4 flex flex-col md:sticky md:top-[140px] md:max-h-[calc(100vh-165px)]">
+      <!-- Right Column (Sticky Feedback: 4 cols) -->
+      <div class="lg:col-span-4 flex flex-col lg:sticky lg:top-[140px] lg:max-h-[calc(100vh-165px)]">
         <div class="bg-white border border-stone-200 rounded-lg p-5 md:p-6 shadow-md flex-grow flex flex-col relative overflow-hidden">
-          <div id="feedback-bg" class="absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl pointer-events-none transition-colors"></div>
           
           <div class="flex flex-col gap-3 mb-4 z-10 flex-shrink-0">
             <button id="btn-feedback" class="w-full flex justify-center items-center gap-2 px-4 py-3 rounded-lg font-bold text-lg transition-all shadow-md">
@@ -1211,7 +1384,6 @@
           </h3>
           
           <div class="flex-grow z-10 overflow-y-auto custom-scrollbar pr-2 pb-2">
-            
             <div id="feedback-empty" class="h-full flex flex-col items-center justify-center text-slate-500 space-y-4 text-center py-8">
               <i data-lucide="message-square" class="w-12 h-12 text-slate-300"></i>
               <p class="text-base md:text-lg max-w-[280px]">Submit your draft to receive detailed feedback on your structure, quotes, and formatting.</p>
@@ -1224,7 +1396,6 @@
             </div>
             
             <div id="feedback-content" class="hidden mt-1"></div>
-            
           </div>
         </div>
       </div>
@@ -1244,8 +1415,6 @@
 
   <!-- Progress Sidebar Panel -->
   <aside id="view-progress" class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-stone-50 shadow-2xl transform translate-x-full transition-transform duration-300 flex flex-col border-l border-stone-200">
-    
-    <!-- Sidebar Header -->
     <div class="flex items-center justify-between p-5 bg-white border-b border-stone-200">
       <div class="flex items-center gap-3">
         <i data-lucide="history" class="w-6 h-6 text-slate-400"></i>
@@ -1256,10 +1425,7 @@
       </button>
     </div>
 
-    <!-- Sidebar Scrollable Content -->
     <div class="flex-grow overflow-y-auto p-5 custom-scrollbar flex flex-col gap-5">
-      
-      <!-- Actions -->
       <div class="flex flex-col gap-2">
         <span id="copy-toast" class="hidden text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-lg text-center">
           Copied to clipboard!
@@ -1285,7 +1451,6 @@
         </div>
       </div>
 
-      <!-- Storage Info Banner -->
       <div id="storage-info-banner" class="bg-violet-50 border border-violet-200 rounded-lg p-4 text-xs md:text-sm flex items-start gap-3 transition-colors shadow-sm">
         <i id="storage-info-icon" data-lucide="info" class="w-5 h-5 text-violet-600 flex-shrink-0 mt-0.5 transition-colors"></i>
         <div>
@@ -1302,9 +1467,7 @@
         </button>
       </div>
 
-      <!-- Grid changed to 1 column for sidebar -->
       <div id="progress-grid" class="hidden grid grid-cols-1 gap-4 pb-4"></div>
-      
     </div>
   </aside>
 </body>
